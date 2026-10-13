@@ -217,8 +217,6 @@ export default function SelectionWorkspace() {
     <AppShell
       user={user}
       onLogout={handleLogout}
-      onOpenWatchlist={() => setSidebarTab('watchlist')}
-      onOpenStrategies={() => setShowStrategies(true)}
     >
       <main className="min-h-screen p-4 md:p-8 font-sans bg-slate-50 text-slate-900">
       <div className="max-w-7xl mx-auto space-y-6">
