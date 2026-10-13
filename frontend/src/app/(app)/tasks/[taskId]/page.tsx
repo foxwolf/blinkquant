@@ -2,9 +2,10 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import type { Task } from '@/hooks/useCluster';
 import { usePolling } from '@/lib/polling';
+import { useSession } from '@/lib/session-context';
 
 const STATUS_LABELS: Record<string, string> = {
   pending: '等待中', queued: '排队中', running: '运行中', done: '完成',
@@ -13,31 +14,9 @@ const STATUS_LABELS: Record<string, string> = {
 
 export default function TaskDetailPage() {
   const { taskId } = useParams<{ taskId: string }>();
-  const router = useRouter();
-  const [user, setUser] = useState<{ id: string; email: string; role: string } | null>(null);
-  const [authLoading, setAuthLoading] = useState(true);
+  const { user } = useSession();
   const [task, setTask] = useState<Task | null>(null);
   const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    let mounted = true;
-    (async () => {
-      try {
-        const session = await fetch('/api/auth/session', { cache: 'no-store' });
-        const json = await session.json();
-        if (!mounted) return;
-        if (json.user) {
-          setUser(json.user);
-          setAuthLoading(false);
-        } else {
-          router.replace('/login');
-        }
-      } catch {
-        if (mounted) router.replace('/login');
-      }
-    })();
-    return () => { mounted = false; };
-  }, [router]);
 
   const load = useCallback(async () => {
     try {
@@ -60,7 +39,7 @@ export default function TaskDetailPage() {
 
   usePolling(load, 3000, { enabled: !!user && !!taskId });
 
-  if (authLoading) return <main className="min-h-screen flex items-center justify-center bg-slate-50"><div className="w-8 h-8 border-4 border-blue-500/20 border-t-blue-600 rounded-full animate-spin" /></main>;
+  if (!user) return null;
 
   return (
       <main className="min-h-screen p-4 md:p-8 bg-slate-50 text-slate-900">

@@ -6,6 +6,7 @@ import dynamic from 'next/dynamic';
 import StockSearch from '../StockSearch';
 import WatchlistPicker from '../WatchlistPicker';
 import useStockResearch from '@/hooks/useStockResearch';
+import { useSession } from '@/lib/session-context';
 
 const KLineChart = dynamic(() => import('../KLineChart'), {
   ssr: false,
@@ -33,34 +34,12 @@ const SECTOR_GROUPS = [
 export default function StockResearchPage() {
   const params = useParams<{ symbol?: string | string[] }>();
   const router = useRouter();
+  const { user } = useSession();
   const symbol = Array.isArray(params?.symbol) ? params.symbol[0] : params?.symbol;
 
-  const [user, setUser] = useState<{ id: string; email: string; role: string } | null>(null);
-  const [authLoading, setAuthLoading] = useState(true);
   const [adjustMenuOpen, setAdjustMenuOpen] = useState(false);
 
   const research = useStockResearch();
-
-  useEffect(() => {
-    let mounted = true;
-    const loadSession = async () => {
-      try {
-        const res = await fetch('/api/auth/session', { cache: 'no-store' });
-        const json = await res.json();
-        if (!mounted) return;
-        if (json.user) {
-          setUser(json.user);
-          setAuthLoading(false);
-        } else {
-          router.replace('/login');
-        }
-      } catch {
-        if (mounted) router.replace('/login');
-      }
-    };
-    void loadSession();
-    return () => { mounted = false; };
-  }, [router]);
 
   useEffect(() => {
     if (symbol && research.stockList.length > 0) {
@@ -79,9 +58,7 @@ export default function StockResearchPage() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [adjustMenuOpen]);
 
-  if (authLoading) {
-    return <main className="min-h-screen flex items-center justify-center bg-slate-50"><div className="w-8 h-8 border-4 border-blue-500/20 border-t-blue-600 rounded-full animate-spin" /></main>;
-  }
+  if (!user) return null;
 
   const selected = research.selectedStock;
   const adjustLabel = ADJUST_OPTIONS.find((item) => item.value === research.adjustMode)?.label || '不复权';

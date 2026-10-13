@@ -100,6 +100,16 @@ const intervalSites = walkSource(resolve(root, 'src'))
   .filter((p) => p !== 'src/lib/polling.ts');
 assert.deepEqual(intervalSites, [], `setInterval must live only in src/lib/polling.ts, found: ${intervalSites.join(', ')}`);
 
+const sessionFetchSites = walkSource(resolve(root, 'src'))
+  .filter((p) => readFileSync(p, 'utf8').includes("'/api/auth/session'"))
+  .map(relative)
+  .filter((p) => p !== 'src/lib/session-context.tsx');
+assert.deepEqual(sessionFetchSites, [], `Session fetch must live only in src/lib/session-context.tsx, found: ${sessionFetchSites.join(', ')}`);
+
+const sessionContextSrc = readFileSync(resolve(root, 'src/lib/session-context.tsx'), 'utf8');
+assert.match(sessionContextSrc, /export function useSession/, 'Session context must expose useSession');
+assert.match(sessionContextSrc, /SessionProvider/, 'Session context must export SessionProvider');
+
 const useClusterSrc = readFileSync(resolve(root, 'src/hooks/useCluster.ts'), 'utf8');
 assert.doesNotMatch(useClusterSrc, /setInterval/, 'useCluster must not background-poll; consumers only use submitTask');
 

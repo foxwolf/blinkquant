@@ -1,23 +1,13 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState } from 'react';
 import Link from 'next/link';
 import BacktestPanel from '@/components/BacktestPanel';
 import BacktestResults from '@/components/BacktestResults';
 import useBacktest from '@/hooks/useBacktest';
 import { useCluster } from '@/hooks/useCluster';
 
-interface User {
-  id: string;
-  email: string;
-  role: string;
-}
-
 export default function BacktestsPage() {
-  const router = useRouter();
-  const [user, setUser] = useState<User | null>(null);
-  const [authLoading, setAuthLoading] = useState(true);
   const [strategyTemplateId, setStrategyTemplateId] = useState<number | null>(null);
   const { submitTask } = useCluster();
   const {
@@ -25,30 +15,6 @@ export default function BacktestsPage() {
     backtestLoading,
     handleBacktest,
   } = useBacktest({ submitTask, strategyTemplateId });
-
-  useEffect(() => {
-    let mounted = true;
-    (async () => {
-      try {
-        const res = await fetch('/api/auth/session', { cache: 'no-store' });
-        const json = await res.json();
-        if (!mounted) return;
-        if (json.user) {
-          setUser(json.user);
-          setAuthLoading(false);
-        } else {
-          router.replace('/login');
-        }
-      } catch {
-        if (mounted) router.replace('/login');
-      }
-    })();
-    return () => { mounted = false; };
-  }, [router]);
-
-  if (authLoading || !user) {
-    return <div className="min-h-screen flex items-center justify-center text-sm text-slate-500">正在加载…</div>;
-  }
 
   const result = backtestResult?.legacy ?? null;
   const taskId = backtestResult?.taskId ?? null;
