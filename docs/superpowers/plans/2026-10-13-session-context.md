@@ -4,7 +4,7 @@
 
 **Goal:** 客户端 session 获取收敛到 `(app)` 路由组 layout 单点（SessionProvider），删除 9 处页面/组件重复样板与重复请求。
 
-**Architecture:** 新建 `src/lib/session-context.tsx`（Provider + `useSession()`，仅暴露引用稳定的 `user`）；`(app)/layout.tsx` 在 `user === null` 时渲染验证占位（children 不挂载，守卫语义不变）；9 个迁移点删自带 fetch/state/重定向/loading 门；IA4 脚本加"session fetch 仅限 context 文件"守卫。
+**Architecture:** 新建 `src/lib/session-context.tsx`（Provider + `useSession()`，仅暴露引用稳定的 `user`）；`(app)/layout.tsx` 在 `user === null` 时渲染验证占位（children 不挂载，守卫语义不变）；13 个迁移点（4 列表页 + 4 `[param]` 详情页 + 5 组件）删自带 fetch/state/重定向/loading 门；IA4 脚本加"session fetch 仅限 context 文件"守卫。
 
 **Tech Stack:** Next.js 14 App Router、React context、现有 `scripts/check-ia4-routes.mjs` 守卫、`node --test` 套件、`next build`。
 
@@ -184,6 +184,13 @@ git commit -m "refactor: migrate shared components to the session hook"
 ```
 
 ---
+
+### Task 3.5: 迁移 4 个 [param] 详情页（执行中经守卫发现补入）
+
+**Files:**
+- Modify: `frontend/src/app/(app)/strategies/backtest/[strategyId]/page.tsx`、`strategies/selection/[strategyId]/page.tsx`、`tasks/[taskId]/page.tsx`、`watchlists/[watchlistId]/page.tsx`
+
+模式同 Task 2/3：删 User interface、user/authLoading state、session useEffect、authLoading 门（改 `if (!user) return null;`），加 `useSession()`。`tasks/[taskId]` 无其他 router 用途，删 `useRouter` import 与 `const router`。
 
 ### Task 4: IA4 守卫 + 全量验证
 

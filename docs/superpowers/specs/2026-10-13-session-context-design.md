@@ -10,7 +10,7 @@
 ## 现状
 
 - `src/app/(app)/layout.tsx` 已做登录守卫：fetch session、未登录 `router.replace('/login')`、loading 期间只渲染验证占位、把 `user` 传给 `AppShell`（MainNav 用 `role === 'admin'` 做菜单门控）。
-- 另有 9 处各自 fetch `/api/auth/session`：`backtests|strategies|system|watchlists` 4 个 page，`ArtifactDetailPage`、`ArtifactLibraryPage`、`SelectionWorkspace`、`StockResearchPage`、`TaskCenterPage` 5 个组件。每处自带 `interface User { id; email; role }`、state、同样的 mounted 守卫与重定向。
+- 另有 13 处各自 fetch `/api/auth/session`（执行中经新守卫发现 4 个 `[param]` 详情页因 PowerShell glob 通配符未被首轮 grep 覆盖，一并迁移）：`backtests|strategies|system|watchlists` 4 个列表页，`strategies/backtest/[strategyId]`、`strategies/selection/[strategyId]`、`tasks/[taskId]`、`watchlists/[watchlistId]` 4 个详情页，`ArtifactDetailPage`、`ArtifactLibraryPage`、`SelectionWorkspace`、`StockResearchPage`、`TaskCenterPage` 5 个组件。每处自带 `interface User { id; email; role }`、state、同样的 mounted 守卫与重定向。
 - 客户端对 `user` 的消费只有两类：真值守卫（9 处全是）；MainNav 的 `role === 'admin'`（由 layout 经 AppShell 传入）。`user.id` 在客户端无消费。admin 页不用 session user（有自己的 403 与用户表逻辑）。
 
 ## 设计
@@ -33,7 +33,7 @@
 - 守卫语义不变：layout 在 `user === null`（含加载中与已重定向）时渲染"正在验证登录状态…"占位，children 不挂载；user 就绪后才渲染 AppShell 树。
 - `logout` 回调不变；`AppShell user={user}` 改为从 `useSession()` 取。
 
-### 3. 9 处页面/组件迁移
+### 3. 13 处页面/组件迁移
 
 删除各自的 interface、`useState`、session `useEffect`、重定向与 `authLoading` 门，替换为 `const { user } = useSession();`。效果依赖 `[user]` 的行为不变（user 为 null 时跳过、就绪后触发一次）。组件内 `if (!user) return null` 防御性保留（这些组件仅在 (app) 组内使用，实际不会遇到 null，但避免假设）。
 
