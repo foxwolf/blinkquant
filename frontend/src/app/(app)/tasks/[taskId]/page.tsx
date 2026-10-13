@@ -1,10 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import AppShell from '@/components/app/AppShell';
 import type { Task } from '@/hooks/useCluster';
+import { usePolling } from '@/lib/polling';
 
 const STATUS_LABELS: Record<string, string> = {
   pending: '等待中', queued: '排队中', running: '运行中', done: '完成',
@@ -39,36 +39,30 @@ export default function TaskDetailPage() {
     return () => { mounted = false; };
   }, [router]);
 
+  const load = useCallback(async () => {
+    try {
+      const res = await fetch('/api/v1/tasks/' + taskId, { cache: 'no-store' });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || '加载任务失败');
+      setTask(json);
+    } catch (e) {
+      console.error('load task detail failed', e);
+      setTask(null);
+    } finally {
+      setLoading(false);
+    }
+  }, [taskId]);
+
   useEffect(() => {
     if (!user || !taskId) return;
-    let mounted = true;
-    const load = async () => {
-      try {
-        const res = await fetch('/api/v1/tasks/' + taskId, { cache: 'no-store' });
-        const json = await res.json();
-        if (!res.ok) throw new Error(json.error || '加载任务失败');
-        if (mounted) setTask(json);
-      } catch (e) {
-        console.error('load task detail failed', e);
-        if (mounted) setTask(null);
-      } finally {
-        if (mounted) setLoading(false);
-      }
-    };
     void load();
-    const interval = window.setInterval(load, 3000);
-    return () => { mounted = false; window.clearInterval(interval); };
-  }, [user, taskId]);
+  }, [user, taskId, load]);
 
-  const logout = async () => {
-    await fetch('/api/auth/logout', { method: 'POST' }).catch(() => undefined);
-    router.replace('/login');
-  };
+  usePolling(load, 3000, { enabled: !!user && !!taskId });
 
   if (authLoading) return <main className="min-h-screen flex items-center justify-center bg-slate-50"><div className="w-8 h-8 border-4 border-blue-500/20 border-t-blue-600 rounded-full animate-spin" /></main>;
 
   return (
-    <AppShell user={user} onLogout={logout}>
       <main className="min-h-screen p-4 md:p-8 bg-slate-50 text-slate-900">
         <div className="max-w-5xl mx-auto space-y-6">
           <div className="flex flex-wrap items-end justify-between gap-4">
@@ -169,6 +163,5 @@ export default function TaskDetailPage() {
           )}
         </div>
       </main>
-    </AppShell>
   );
 }

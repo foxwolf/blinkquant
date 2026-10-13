@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import AppShell from '@/components/app/AppShell';
 import BacktestPanel from '@/components/BacktestPanel';
 import BacktestResults from '@/components/BacktestResults';
 import useBacktest from '@/hooks/useBacktest';
@@ -25,7 +24,6 @@ export default function BacktestsPage() {
     backtestResult,
     backtestLoading,
     handleBacktest,
-    clearBacktestState,
   } = useBacktest({ submitTask, strategyTemplateId });
 
   useEffect(() => {
@@ -48,15 +46,6 @@ export default function BacktestsPage() {
     return () => { mounted = false; };
   }, [router]);
 
-  const handleLogout = async () => {
-    try {
-      await fetch('/api/auth/logout', { method: 'POST' });
-    } finally {
-      clearBacktestState();
-      router.replace('/login');
-    }
-  };
-
   if (authLoading || !user) {
     return <div className="min-h-screen flex items-center justify-center text-sm text-slate-500">正在加载…</div>;
   }
@@ -66,8 +55,7 @@ export default function BacktestsPage() {
   const summary = backtestResult?.summary ?? null;
 
   return (
-    <AppShell user={user} onLogout={handleLogout}>
-      <main className="mx-auto max-w-7xl px-4 py-6 md:px-6 space-y-6">
+    <main className="mx-auto max-w-7xl px-4 py-6 md:px-6 space-y-6">
         <header className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <p className="text-xs font-semibold uppercase tracking-wider text-blue-600">Research</p>
@@ -114,6 +102,5 @@ export default function BacktestsPage() {
           </section>
         )}
       </main>
-    </AppShell>
   );
 }

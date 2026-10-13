@@ -4,7 +4,6 @@ import type { MutableRefObject, RefObject, Dispatch, SetStateAction } from 'reac
 import dynamic from 'next/dynamic';
 import StockSearch from '../StockSearch';
 import WatchlistPicker from '../WatchlistPicker';
-import BacktestResults from '../BacktestResults';
 import { formatMoney, formatVolume } from '@/utils/format';
 
 const KLineChart = dynamic(() => import('../KLineChart'), {
@@ -46,7 +45,6 @@ export interface SelectedStock {
 }
 
 interface StockResearchPanelProps {
-  sidebarTab: 'results' | 'watchlist' | 'backtest';
   selectedStock: SelectedStock | null;
   stockList: Array<{code: string; name: string}>;
   sectors: { code: string; name: string; type: string }[];
@@ -71,36 +69,18 @@ interface StockResearchPanelProps {
   lastStockRef: MutableRefObject<{ code: string; name: string } | null>;
   onReturnToStock: () => void;
   onToggleFullscreen: () => Promise<void>;
-  backtestResult: any;
-  backtestLoading: boolean;
 }
 
 export default function StockResearchPanel({
-  sidebarTab, selectedStock, stockList, sectors, expandedSectors, chartLoading,
+  selectedStock, stockList, sectors, expandedSectors, chartLoading,
   chartTimeframe, onChangeChartTimeframe,
   subChartType, onChangeSubChartType, mainChartType, onChangeMainChartType, isFullScreen,
   chartWrapperRef, adjustMode, adjustMenuOpen, adjustMenuRef, onChangeAdjustMode,
   onChangeAdjustMenuOpen, onChangeSectorsExpanded, onViewStock, onViewSector,
-  lastStockRef, onReturnToStock, onToggleFullscreen,
-  backtestResult, backtestLoading
+  lastStockRef, onReturnToStock, onToggleFullscreen
 }: StockResearchPanelProps) {
   return (
       <section className="lg:col-span-3 order-2 lg:order-2">
-            {sidebarTab === 'backtest' ? (
-              <div className="bg-white rounded-2xl border flex flex-col h-[600px] shadow-sm w-full p-4 overflow-y-auto">
-                {backtestResult ? (
-                  <BacktestResults
-                    result={backtestResult.legacy}
-                    taskId={backtestResult.taskId}
-                    summary={backtestResult.summary}
-                  />
-                ) : (
-                  <div className="h-full flex items-center justify-center text-slate-400">
-                    {backtestLoading ? '回测计算中...' : '设置参数后点击"运行回测"'}
-                  </div>
-                )}
-              </div>
-            ) : (
             <div ref={chartWrapperRef} className="bg-white rounded-2xl border flex flex-col h-[600px] shadow-sm w-full">
               <div className="px-4 py-3 border-b flex flex-wrap justify-between items-center gap-2 bg-white z-10 shrink-0">
                 <StockSearch stockList={stockList} onSelect={onViewStock} />
@@ -261,7 +241,6 @@ export default function StockResearchPanel({
                 )}
               </div>
             </div>
-            )}
       </section>
   );
 }

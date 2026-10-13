@@ -4,53 +4,13 @@ import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import AISelectModal from '../AISelectModal';
 import { useCluster } from '@/hooks/useCluster';
-import AppShell from '../app/AppShell';
 import SelectionControls from './SelectionControls';
 import SelectionResultsSidebar from './SelectionResultsSidebar';
 import StockResearchPanel from './StockResearchPanel';
 import useStockResearch from '@/hooks/useStockResearch';
 import useSelection, { type SelectionStrategySnapshot } from '@/hooks/useSelection';
-import useBacktest from '@/hooks/useBacktest';
 
 const StrategyList = dynamic(() => import('../StrategyList'), { ssr: false });
-
-
-// 板块分组显示配置：行业常驻，概念/地域超过阈值折叠
-function nodeIdFromHealthCard(node: any, idx: number): "node1" | "node2" | "node3" {
-  const n = node?.node;
-  if (n === 0 || n === "0") return "node1";
-  if (n === 1 || n === "1") return "node2";
-  if (n === 2 || n === "2") return "node3";
-  return (["node1", "node2", "node3"] as const)[idx] ?? "node1";
-}
-
-function queueForSlot(
-  queues: ReturnType<typeof import("@/hooks/useCluster").useCluster>["queues"],
-  slot: "node1" | "node2" | "node3"
-) {
-  if (!queues) return null;
-  if (slot === "node1") return queues.selection;
-  if (slot === "node2") return queues.backtest;
-  return queues.running;
-}
-
-function queueItemLine(it: {
-  id: number;
-  status: string;
-  task_type_zh?: string;
-  assigned_node?: string | null;
-  progress_pct?: number | null;
-  date_range?: string | null;
-  formula_preview?: string | null;
-}): string {
-  if (it.status === "running") {
-    const pct = it.progress_pct != null ? ` ${Math.round(it.progress_pct)}%` : "";
-    const where = it.assigned_node ? `@${it.assigned_node}` : "";
-    return `#${it.id} ${it.task_type_zh || ""}${where}${pct}`;
-  }
-  const extra = it.date_range || it.formula_preview || "";
-  return `#${it.id} ${extra}`.trim();
-}
 
 export default function SelectionWorkspace() {
   const router = useRouter();
@@ -81,15 +41,10 @@ export default function SelectionWorkspace() {
   const [showStrategies, setShowStrategies] = useState(false);
   const [saveStrategyOpen, setSaveStrategyOpen] = useState(false);
   const [showAISelect, setShowAISelect] = useState(false);
-  const [sidebarTab, setSidebarTab] = useState<'results' | 'watchlist' | 'backtest'>('results');
-  const [backtestTemplateId, setBacktestTemplateId] = useState<number | null>(null);
+  const [sidebarTab, setSidebarTab] = useState<'results' | 'watchlist'>('results');
   const [strategyName, setStrategyName] = useState('');
   const [selectionStrategySource, setSelectionStrategySource] = useState<SelectionStrategySnapshot | undefined>(undefined);
-  const {
-    nodes: clusterNodes,
-    queues,
-    submitTask,
-  } = useCluster();
+  const { submitTask } = useCluster();
 
   const {
     chartTimeframe,
@@ -136,32 +91,7 @@ export default function SelectionWorkspace() {
     onClearSelectedStock: clearSelectedStock,
   });
 
-  const {
-    backtestResult,
-    backtestLoading,
-    handleBacktest,
-    clearBacktestState,
-  } = useBacktest({
-    submitTask,
-    strategyTemplateId: backtestTemplateId,
-  });
-
-  const [clusterStatus, setClusterStatus] = useState<any>(null);
   const [watchlistCodes, setWatchlistCodes] = useState<string[]>([]);
-
-  const fetchStatus = async () => {
-    try {
-      const res = await fetch('/api/status');
-      const json = await res.json();
-      setClusterStatus(json);
-    } catch (e) { console.error("Monitor failed", e); }
-  };
-
-  useEffect(() => {
-    fetchStatus();
-    const timer = setInterval(fetchStatus, 5000); 
-    return () => clearInterval(timer);
-  }, []);
 
   const refreshWatchlist = useCallback(async () => {
     try {
@@ -179,12 +109,9 @@ export default function SelectionWorkspace() {
     if (user) refreshWatchlist();
   }, [user, refreshWatchlist]);
 
-  // 从策略库进入选股/回测工作台时，读取一次待恢复的策略并清理会话标记。
+  // 从策略库进入选股工作台时，读取一次待恢复的策略并清理会话标记。
   useEffect(() => {
     if (!user) return;
-
-    const tab = new URLSearchParams(window.location.search).get('tab');
-    if (tab === 'backtest') setSidebarTab('backtest');
 
     try {
       const selectionRaw = sessionStorage.getItem('bq-pending-selection-strategy');
@@ -211,18 +138,6 @@ export default function SelectionWorkspace() {
     }
   }, [user, setFormula, setTimeframe]);
 
-  // Listen for openBacktestResult from TaskList
-  useEffect(() => {
-    const handler = (e: Event) => {
-      const detail = (e as CustomEvent).detail;
-      if (detail?.taskId) {
-        setSidebarTab('backtest');
-      }
-    };
-    window.addEventListener('openBacktestResult', handler);
-    return () => window.removeEventListener('openBacktestResult', handler);
-  }, []);
-
   const handleViewStock = useCallback((code: string) => {
     router.push(`/stocks/${encodeURIComponent(code)}`);
   }, [router]);
@@ -245,17 +160,6 @@ export default function SelectionWorkspace() {
       console.error('Failed to toggle watchlist', e);
     }
   }, [watchlistCodes]);
-
-  const handleLogout = useCallback(async () => {
-    try {
-      await fetch('/api/auth/logout', { method: 'POST' });
-    } catch (e) {
-      console.error('Logout failed', e);
-    }
-    // Clear any stale backtest state on logout
-    clearBacktestState();
-    router.replace('/login');
-  }, [clearBacktestState, router]);
 
   const handleSaveStrategy = useCallback(async () => {
     if (!strategyName.trim()) return;
@@ -300,91 +204,8 @@ export default function SelectionWorkspace() {
   }
 
   return (
-    <AppShell
-      user={user}
-      onLogout={handleLogout}
-      onOpenWatchlist={() => setSidebarTab('watchlist')}
-      onOpenStrategies={() => setShowStrategies(true)}
-    >
       <main className="min-h-screen p-4 md:p-8 font-sans bg-slate-50 text-slate-900">
       <div className="max-w-7xl mx-auto space-y-6">
-        
-        <section className="flex flex-col gap-4">
-          <div className="flex flex-col gap-3">
-            <div className="flex flex-wrap justify-center gap-3">
-              {clusterStatus?.nodes?.map((node: any, idx: number) => {
-                const slot = nodeIdFromHealthCard(node, idx);
-                const role = (clusterNodes || []).find((n) => n.node_id === slot);
-                const q = queueForSlot(queues, slot);
-
-                return (
-                  <div
-                    key={idx}
-                    className={`text-xs md:text-sm font-mono px-3 py-2 rounded-lg border shadow-sm min-w-[200px] max-w-[280px] ${
-                      node.online ? 'bg-white border-slate-200' : 'bg-red-50 border-red-200'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <div className={`w-2.5 h-2.5 md:w-3 md:h-3 rounded-full ${node.online ? 'bg-green-500' : 'bg-red-500'}`}></div>
-                      <span className="font-bold text-slate-700 text-sm md:text-base">Node {node.node ?? idx}</span>
-                      <span className={`text-xs uppercase font-bold px-2 py-0.5 rounded-full ${
-                        node.status === 'healthy' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
-                      }`}>
-                        {node.status || 'OFFLINE'}
-                      </span>
-                    </div>
-
-                    <div className="mt-1.5 text-sm font-semibold text-slate-800">
-                      {role?.display_label || (node.online ? '—' : '离线')}
-                    </div>
-
-                    {node.online ? (
-                      <div className="mt-2 space-y-1">
-                        <div className="flex justify-between gap-3">
-                          <span className="text-slate-500 text-xs">进程内存</span>
-                          <span className="font-mono font-medium text-slate-900">{node.process_memory_gb} GB</span>
-                        </div>
-                        <div className="flex justify-between gap-3">
-                          <span className="text-slate-500 text-xs">系统空闲</span>
-                          <span className="font-mono font-bold text-blue-600">{node.system_memory_free_gb ?? node.system_memory_available_gb} GB</span>
-                        </div>
-                        <div className="flex justify-between gap-3">
-                          <span className="text-slate-500 text-xs">磁盘空闲</span>
-                          <span className="font-mono text-slate-900">{node.disk_free_gb} GB</span>
-                        </div>
-                        <div className="flex justify-between gap-3">
-                          <span className="text-slate-500 text-xs">数据行</span>
-                          <span className="font-mono text-slate-500">{node.rows_daily?.toLocaleString()}</span>
-                        </div>
-                      </div>
-                    ) : null}
-
-                    {q && (
-                      <div className="mt-2 pt-2 border-t border-slate-100">
-                        <div className="font-medium text-slate-600 text-xs">
-                          {q.title}{' '}
-                          <span className={q.count > 0 ? 'text-slate-900' : 'text-slate-400'}>
-                            {q.count}
-                          </span>
-                        </div>
-                        {q.count > 0 && (
-                          <div className="mt-1 space-y-0.5 max-h-24 overflow-y-auto">
-                            {q.items.map((it) => (
-                              <div key={it.id} className="pl-1 text-slate-600 truncate text-xs">
-                                {queueItemLine(it)}
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </section>
-
         <SelectionControls
           formula={formula}
           selectDate={selectDate}
@@ -409,15 +230,8 @@ export default function SelectionWorkspace() {
             onViewStock={handleViewStock}
             onRemoveWatchlist={toggleWatchlist}
             onWatchlistChanged={refreshWatchlist}
-            formula={formula}
-            backtestLoading={backtestLoading}
-            backtestResult={backtestResult}
-            onBacktest={handleBacktest}
-            onTemplateSelected={setBacktestTemplateId}
-            isAdmin={user?.role === 'admin'}
           />
           <StockResearchPanel
-            sidebarTab={sidebarTab}
             selectedStock={selectedStock}
             stockList={stockList}
             sectors={sectors}
@@ -442,8 +256,6 @@ export default function SelectionWorkspace() {
             lastStockRef={lastStockRef}
             onReturnToStock={returnToStock}
             onToggleFullscreen={toggleFullscreen}
-            backtestResult={backtestResult}
-            backtestLoading={backtestLoading}
           />
         </div>
       </div>
@@ -490,6 +302,5 @@ export default function SelectionWorkspace() {
         />
       )}
       </main>
-    </AppShell>
   );
 }

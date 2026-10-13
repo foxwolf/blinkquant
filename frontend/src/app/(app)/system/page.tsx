@@ -3,8 +3,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import AppShell from '@/components/app/AppShell';
-import NodeHealthCards from '@/components/system/NodeHealthCards';
+import NodeHealthCards, { type MetricsNode } from '@/components/system/NodeHealthCards';
+import { usePolling } from '@/lib/polling';
 
 interface User { id: string; email: string; role: string }
 interface ClusterNode {
@@ -95,6 +95,7 @@ export default function SystemStatusPage() {
   const [user, setUser] = useState<User | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [cluster, setCluster] = useState<ClusterStatus | null>(null);
+  const [metricsNodes, setMetricsNodes] = useState<MetricsNode[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
@@ -121,6 +122,13 @@ export default function SystemStatusPage() {
   const refresh = useCallback(async (quiet = false) => {
     if (quiet) setRefreshing(true);
     else setLoading(true);
+    // 节点指标与集群调度状态并行刷新；指标失败只降级卡片，不影响主状态。
+    const metricsPromise = fetch('/api/status', { cache: 'no-store' })
+      .then((res) => (res.ok ? res.json() : null))
+      .catch(() => null)
+      .then((json) => {
+        setMetricsNodes(Array.isArray(json?.nodes) ? json.nodes : []);
+      });
     try {
       const res = await fetch('/api/v1/cluster/status', { cache: 'no-store' });
       const data = await res.json().catch(() => ({}));
@@ -131,6 +139,7 @@ export default function SystemStatusPage() {
     } catch (err) {
       setError(err instanceof Error ? err.message : '无法读取集群状态');
     } finally {
+      await metricsPromise;
       setLoading(false);
       setRefreshing(false);
     }
@@ -139,14 +148,9 @@ export default function SystemStatusPage() {
   useEffect(() => {
     if (!user) return;
     void refresh();
-    const timer = window.setInterval(() => { void refresh(true); }, 10000);
-    return () => window.clearInterval(timer);
   }, [user, refresh]);
 
-  const logout = useCallback(async () => {
-    await fetch('/api/auth/logout', { method: 'POST' }).catch(() => undefined);
-    router.replace('/login');
-  }, [router]);
+  usePolling(() => void refresh(true), 10000, { enabled: !!user });
 
   const nodes = cluster?.nodes || [];
   const stats = cluster?.queueStats || {};
@@ -158,9 +162,8 @@ export default function SystemStatusPage() {
   }
 
   return (
-    <AppShell user={user} onLogout={logout}>
       <main className="mx-auto max-w-7xl space-y-6 px-4 py-8 md:px-8">
-        <NodeHealthCards />
+        <NodeHealthCards metricsNodes={metricsNodes} schedulerNodes={nodes} queues={cluster?.queues} />
 
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
@@ -255,6 +258,5 @@ export default function SystemStatusPage() {
           <Link href="/tasks" className="text-sm font-semibold text-blue-600 hover:text-blue-700">前往任务中心 →</Link>
         </div>
       </main>
-    </AppShell>
   );
 }

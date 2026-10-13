@@ -3,8 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import AppShell from '@/components/app/AppShell';
 import type { Task } from '@/hooks/useCluster';
+import { usePolling } from '@/lib/polling';
 
 type ArtifactKind = 'all' | 'selection' | 'backtest';
 
@@ -108,11 +108,7 @@ export default function ArtifactLibraryPage({ kind = 'all' }: { kind?: ArtifactK
   }, [router]);
 
   useEffect(() => { if (user) void load(); }, [user, load]);
-  useEffect(() => {
-    if (!user) return;
-    const timer = window.setInterval(() => void load({ background: true }), 5000);
-    return () => window.clearInterval(timer);
-  }, [user, load]);
+  usePolling(() => void load({ background: true }), 5000, { enabled: !!user });
   useEffect(() => { setPage(0); }, [kind, search]);
   useEffect(() => {
     const lastPage = Math.max(0, Math.ceil(storage.filteredTotal / pageSize) - 1);
@@ -175,10 +171,6 @@ export default function ArtifactLibraryPage({ kind = 'all' }: { kind?: ArtifactK
   ];
 
   return (
-    <AppShell user={user} onLogout={async () => {
-      await fetch('/api/auth/logout', { method: 'POST' }).catch(() => undefined);
-      router.replace('/login');
-    }}>
       <main className="min-h-screen p-4 md:p-8 bg-slate-50 text-slate-900">
         <div className="max-w-7xl mx-auto space-y-6">
           <div className="flex flex-wrap items-end justify-between gap-4">
@@ -288,6 +280,5 @@ export default function ArtifactLibraryPage({ kind = 'all' }: { kind?: ArtifactK
           </section>
         </div>
       </main>
-    </AppShell>
   );
 }

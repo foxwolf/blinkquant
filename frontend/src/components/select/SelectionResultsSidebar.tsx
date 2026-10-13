@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import WatchlistPicker from '../WatchlistPicker';
 import Watchlist from '../Watchlist';
 
-type SidebarTab = 'results' | 'watchlist' | 'backtest';
+type SidebarTab = 'results' | 'watchlist';
 
 interface WatchlistSummary {
   id: string;
@@ -83,12 +83,6 @@ interface SelectionResultsSidebarProps {
   onViewStock: (code: string) => void;
   onRemoveWatchlist: (code: string) => void;
   onWatchlistChanged?: () => void | Promise<void>;
-  formula: string;
-  backtestLoading: boolean;
-  backtestResult: any;
-  onBacktest: (params: any) => void | Promise<void>;
-  onTemplateSelected: (id: number | null) => void;
-  isAdmin: boolean;
 }
 
 export default function SelectionResultsSidebar(props: SelectionResultsSidebarProps) {

@@ -65,66 +65,9 @@ export default function useBacktest({
   }, []);
 
   useEffect(() => {
-    const savedJobId = localStorage.getItem('backtestJobId');
-    const savedNode = localStorage.getItem('backtestNode');
-    const savedTime = localStorage.getItem('backtestTime');
-
-    if (savedTime && Date.now() - parseInt(savedTime, 10) > 3600000) {
-      clearBacktestState();
-      return;
-    }
-
-    if (savedJobId && savedNode) {
-      const pollSavedJob = async () => {
-        setBacktestLoading(true);
-        let retries = 0;
-        const maxRetries = 20;
-        try {
-          while (retries < maxRetries) {
-            await new Promise((resolve) => setTimeout(resolve, 3000));
-            retries++;
-            try {
-              const pollRes = await fetch(
-                savedNode + '/api/v1/backtest/async/' + savedJobId,
-                { signal: AbortSignal.timeout(60000) }
-              );
-              if (!pollRes.ok) {
-                const text = await pollRes.text();
-                throw new Error('HTTP ' + pollRes.status + ': ' + text.slice(0, 200));
-              }
-              const result = await pollRes.json();
-              if (result.status === 'done') {
-                setBacktestResult(result.data);
-                return;
-              }
-              if (result.status === 'failed' || result.status === 'cancelled' || result.status === 'expired') {
-                return;
-              }
-            } catch (e) {
-              console.error('Poll error (retry ' + retries + '):', e);
-            }
-          }
-          alert('恢复回测超时，请重新运行');
-        } catch (e) {
-          console.error('Failed to poll saved job:', e);
-        } finally {
-          clearBacktestState();
-          setBacktestLoading(false);
-        }
-      };
-      void pollSavedJob();
-    }
-  }, [clearBacktestState]);
-
-  useEffect(() => {
-    const handler = (e: Event) => {
-      const detail = (e as CustomEvent).detail;
-      if (detail?.taskId) {
-        setBacktestResult({ taskId: detail.taskId, summary: detail.summary });
-      }
-    };
-    window.addEventListener('openBacktestResult', handler);
-    return () => window.removeEventListener('openBacktestResult', handler);
+    localStorage.removeItem('backtestJobId');
+    localStorage.removeItem('backtestNode');
+    localStorage.removeItem('backtestTime');
   }, []);
 
   useEffect(() => {
@@ -161,6 +104,5 @@ export default function useBacktest({
     backtestLoading,
     handleBacktest,
     setBacktestResult,
-    clearBacktestState,
   };
 }

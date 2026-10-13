@@ -1,27 +1,59 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useCluster } from '@/hooks/useCluster';
+export interface MetricsNode {
+  node?: string | number;
+  online?: boolean;
+  status?: string;
+  process_memory_gb?: number;
+  system_memory_free_gb?: number;
+  system_memory_available_gb?: number;
+  disk_free_gb?: number;
+  rows_daily?: number;
+}
 
-function nodeIdFromHealthCard(node: any, idx: number): 'node1' | 'node2' | 'node3' {
-  const n = node?.node;
+interface SchedulerNode {
+  node_id: string;
+  display_label?: string;
+}
+
+interface QueueItem {
+  id: number;
+  status?: string;
+  task_type_zh?: string;
+  assigned_node?: string | null;
+  progress_pct?: number | null;
+  date_range?: string | null;
+  formula_preview?: string | null;
+}
+
+interface QueueSection {
+  title?: string;
+  count?: number;
+  items?: QueueItem[];
+}
+
+interface NodeHealthCardsProps {
+  metricsNodes?: MetricsNode[];
+  schedulerNodes?: SchedulerNode[];
+  queues?: { selection?: QueueSection; backtest?: QueueSection; running?: QueueSection };
+}
+
+function nodeIdFromHealthCard(node: MetricsNode, idx: number): 'node1' | 'node2' | 'node3' {
+  const n = node.node;
   if (n === 0 || n === '0') return 'node1';
   if (n === 1 || n === '1') return 'node2';
   if (n === 2 || n === '2') return 'node3';
   return (['node1', 'node2', 'node3'] as const)[idx] ?? 'node1';
 }
 
-function queueForSlot(
-  queues: ReturnType<typeof import('@/hooks/useCluster').useCluster>['queues'],
-  slot: 'node1' | 'node2' | 'node3'
-) {
+function queueForSlot(queues: NodeHealthCardsProps['queues'], slot: 'node1' | 'node2' | 'node3'): QueueSection | null {
   if (!queues) return null;
   if (slot === 'node1') return queues.selection;
   if (slot === 'node2') return queues.backtest;
   return queues.running;
 }
 
-function queueItemLine(it: { id: number; status: string; task_type_zh?: string; assigned_node?: string | null; progress_pct?: number | null; date_range?: string | null; formula_preview?: string | null }): string {
+function queueItemLine(it: QueueItem): string {
   if (it.status === 'running') {
     const pct = it.progress_pct != null ? ` ${Math.round(it.progress_pct)}%` : '';
     const where = it.assigned_node ? `@${it.assigned_node}` : '';
@@ -31,35 +63,13 @@ function queueItemLine(it: { id: number; status: string; task_type_zh?: string; 
   return `#${it.id} ${extra}`.trim();
 }
 
-export default function NodeHealthCards() {
-  const { nodes: clusterNodes, queues } = useCluster();
-  const [clusterStatus, setClusterStatus] = useState<any>(null);
-
-  useEffect(() => {
-    let mounted = true;
-    const fetchStatus = async () => {
-      try {
-        const res = await fetch('/api/status', { cache: 'no-store' });
-        const json = await res.json();
-        if (mounted) setClusterStatus(json);
-      } catch (e) {
-        console.error('Monitor failed', e);
-      }
-    };
-    void fetchStatus();
-    const timer = window.setInterval(fetchStatus, 5000);
-    return () => {
-      mounted = false;
-      window.clearInterval(timer);
-    };
-  }, []);
-
+export default function NodeHealthCards({ metricsNodes, schedulerNodes, queues }: NodeHealthCardsProps) {
   return (
     <section className="w-full">
       <div className="grid w-full grid-cols-1 gap-3 md:grid-cols-3 md:gap-4">
-        {clusterStatus?.nodes?.map((node: any, idx: number) => {
+        {(metricsNodes || []).map((node, idx) => {
           const slot = nodeIdFromHealthCard(node, idx);
-          const role = (clusterNodes || []).find((n) => n.node_id === slot);
+          const role = (schedulerNodes || []).find((n) => n.node_id === slot);
           const q = queueForSlot(queues, slot);
 
           return (
@@ -82,8 +92,8 @@ export default function NodeHealthCards() {
               ) : null}
               {q && (
                 <div className="mt-2 pt-2 border-t border-slate-100">
-                  <div className="font-medium text-slate-600 text-xs">{q.title}{' '}<span className={q.count > 0 ? 'text-slate-900' : 'text-slate-400'}>{q.count}</span></div>
-                  {q.count > 0 && <div className="mt-1 space-y-0.5 max-h-24 overflow-y-auto">{q.items.map((it) => <div key={it.id} className="pl-1 text-slate-600 truncate text-xs">{queueItemLine(it)}</div>)}</div>}
+                  <div className="font-medium text-slate-600 text-xs">{q.title}{' '}<span className={(q.count ?? 0) > 0 ? 'text-slate-900' : 'text-slate-400'}>{q.count ?? 0}</span></div>
+                  {(q.count ?? 0) > 0 && <div className="mt-1 space-y-0.5 max-h-24 overflow-y-auto">{(q.items || []).map((it) => <div key={it.id} className="pl-1 text-slate-600 truncate text-xs">{queueItemLine(it)}</div>)}</div>}
                 </div>
               )}
             </div>

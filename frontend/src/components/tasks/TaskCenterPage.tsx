@@ -3,8 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import AppShell from '@/components/app/AppShell';
 import type { Task } from '@/hooks/useCluster';
+import { usePolling } from '@/lib/polling';
 
 const STATUS_LABELS: Record<string, string> = {
   pending: '等待中',
@@ -100,11 +100,7 @@ export default function TaskCenterPage() {
     if (user) void load();
   }, [user, load]);
 
-  useEffect(() => {
-    if (!user) return;
-    const id = window.setInterval(() => void load({ background: true }), 3000);
-    return () => window.clearInterval(id);
-  }, [user, load]);
+  usePolling(() => void load({ background: true }), 3000, { enabled: !!user });
 
   const cancel = async (taskId: number) => {
     setBusyId(taskId);
@@ -150,10 +146,6 @@ export default function TaskCenterPage() {
   const doneCount = tasks.filter(t => t.status === 'done').length;
 
   return (
-    <AppShell user={user} onLogout={async () => {
-      await fetch('/api/auth/logout', { method: 'POST' }).catch(() => undefined);
-      router.replace('/login');
-    }}>
       <main className="min-h-screen p-4 md:p-8 bg-slate-50 text-slate-900">
         <div className="max-w-7xl mx-auto space-y-6">
           <div className="flex flex-wrap items-end justify-between gap-4">
@@ -251,6 +243,5 @@ export default function TaskCenterPage() {
           </section>
         </div>
       </main>
-    </AppShell>
   );
 }

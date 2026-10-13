@@ -14,8 +14,6 @@ export interface NavUser {
 interface MainNavProps {
   user: NavUser | null;
   onLogout: () => void;
-  onOpenWatchlist?: () => void;
-  onOpenStrategies?: () => void;
 }
 
 const NAV_ITEMS = [
@@ -32,8 +30,6 @@ const NAV_ITEMS = [
 export default function MainNav({
   user,
   onLogout,
-  onOpenWatchlist,
-  onOpenStrategies,
 }: MainNavProps) {
   const pathname = usePathname();
   const router = useRouter();

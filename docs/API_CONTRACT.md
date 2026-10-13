@@ -6,7 +6,7 @@
 
 ## 认证说明
 
-自 v2.1 起，除 `/api/status` 与 `/api/v1/health` 外，前端 API 全部需要登录（HttpOnly Cookie `__auth_token`，JWT HS256，有效期 7 天）。未登录返回 401。
+自 v2.1 起，除 `/api/v1/health` 外，前端 API 全部需要登录（HttpOnly Cookie `__auth_token`，JWT HS256，有效期 7 天）。未登录返回 401。（`/api/status` 已于 P2-3 补登录守卫，缓存改为 `private, no-store`。）
 
 ## 前端 API 路由 (Next.js, Vercel Postgres)
 

@@ -55,8 +55,8 @@ test('legacy watchlist item API resolves explicit lists through Node1 ownership'
 });
 
 test('watchlist UI exposes create, rename, delete and per-list stock management', () => {
-  const listPage = read('src/app/watchlists/page.tsx');
-  const detailPage = read('src/app/watchlists/[watchlistId]/page.tsx');
+  const listPage = read('src/app/(app)/watchlists/page.tsx');
+  const detailPage = read('src/app/(app)/watchlists/[watchlistId]/page.tsx');
   assert.match(listPage, /新建列表/);
   assert.match(listPage, /\/api\/watchlists/);
   assert.match(detailPage, /重命名/);
