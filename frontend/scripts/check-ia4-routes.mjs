@@ -24,7 +24,7 @@ const routeFiles = [
   ['/system', 'src/app/(app)/system/page.tsx'],
   ['/login', 'src/app/login/page.tsx'],
   ['/register', 'src/app/register/page.tsx'],
-  ['/admin', 'src/app/admin/page.tsx'],
+  ['/admin', 'src/app/(app)/admin/page.tsx'],
 ];
 
 for (const [route, relativePath] of routeFiles) {
