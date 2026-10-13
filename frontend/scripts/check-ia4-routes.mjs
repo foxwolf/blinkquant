@@ -90,6 +90,9 @@ const shellImporters = walkTsx(resolve(root, 'src'))
   .filter((p) => p !== 'src/components/app/AppShell.tsx' && p !== 'src/app/(app)/layout.tsx');
 assert.deepEqual(shellImporters, [], `Only the (app) layout may render AppShell, found: ${shellImporters.join(', ')}`);
 
+const useClusterSrc = readFileSync(resolve(root, 'src/hooks/useCluster.ts'), 'utf8');
+assert.doesNotMatch(useClusterSrc, /setInterval/, 'useCluster must not background-poll; consumers only use submitTask');
+
 for (const removed of [
   'src/components/TaskList.tsx',
   'src/components/ClusterStatusBar.tsx',
