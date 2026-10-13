@@ -3,8 +3,7 @@
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
-
-interface User { id: string; email: string; role: string }
+import { useSession } from '@/lib/session-context';
 
 interface BacktestTemplate {
   id: number;
@@ -36,29 +35,10 @@ function timeframeLabel(value: string) {
 export default function BacktestStrategyDetailPage() {
   const params = useParams<{ strategyId: string }>();
   const router = useRouter();
-  const [user, setUser] = useState<User | null>(null);
-  const [authLoading, setAuthLoading] = useState(true);
+  const { user } = useSession();
   const [template, setTemplate] = useState<BacktestTemplate | null>(null);
   const [versions, setVersions] = useState<BacktestStrategyVersion[]>([]);
   const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    let mounted = true;
-    (async () => {
-      try {
-        const res = await fetch('/api/auth/session', { cache: 'no-store' });
-        const json = await res.json();
-        if (!mounted) return;
-        if (json.user) setUser(json.user);
-        else router.replace('/login');
-      } catch {
-        if (mounted) router.replace('/login');
-      } finally {
-        if (mounted) setAuthLoading(false);
-      }
-    })();
-    return () => { mounted = false; };
-  }, [router]);
 
   const refresh = useCallback(async () => {
     const id = Number(params?.strategyId);
@@ -151,9 +131,7 @@ export default function BacktestStrategyDetailPage() {
     }
   };
 
-  if (authLoading) {
-    return <main className="min-h-screen flex items-center justify-center bg-slate-50"><div className="w-8 h-8 border-4 border-blue-500/20 border-t-blue-600 rounded-full animate-spin" /></main>;
-  }
+  if (!user) return null;
 
   const config = template?.config || {};
   const strategy = config.strategy || {};

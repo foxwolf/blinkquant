@@ -5,8 +5,8 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import StockSearch from '@/components/StockSearch';
 import Watchlist from '@/components/Watchlist';
+import { useSession } from '@/lib/session-context';
 
-interface User { id: string; email: string; role: string }
 interface StockItem { code: string; name: string }
 interface WatchlistDetail {
   id: string; name: string; is_default: boolean; item_count: number;
@@ -16,29 +16,14 @@ interface WatchlistDetail {
 export default function WatchlistDetailPage() {
   const params = useParams<{ watchlistId: string }>();
   const router = useRouter();
+  const { user } = useSession();
   const watchlistId = Array.isArray(params?.watchlistId) ? params.watchlistId[0] : params?.watchlistId;
-  const [user, setUser] = useState<User | null>(null);
-  const [authLoading, setAuthLoading] = useState(true);
   const [watchlist, setWatchlist] = useState<WatchlistDetail | null>(null);
   const [stockList, setStockList] = useState<StockItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [renameOpen, setRenameOpen] = useState(false);
   const [rename, setRename] = useState('');
   const [error, setError] = useState('');
-
-  useEffect(() => {
-    let mounted = true;
-    (async () => {
-      try {
-        const res = await fetch('/api/auth/session', { cache: 'no-store' });
-        const json = await res.json();
-        if (!mounted) return;
-        if (json.user) { setUser(json.user); setAuthLoading(false); }
-        else router.replace('/login');
-      } catch { if (mounted) router.replace('/login'); }
-    })();
-    return () => { mounted = false; };
-  }, [router]);
 
   const refresh = useCallback(async () => {
     if (!watchlistId) return;
@@ -107,7 +92,7 @@ export default function WatchlistDetailPage() {
     } catch (error) { alert(error instanceof Error ? error.message : '删除失败'); }
   }, [router, watchlist, watchlistId]);
 
-  if (authLoading) return <main className="min-h-screen flex items-center justify-center bg-slate-50"><div className="w-8 h-8 border-4 border-blue-500/20 border-t-blue-600 rounded-full animate-spin" /></main>;
+  if (!user) return null;
 
   return (
       <main className="min-h-screen p-4 md:p-8 bg-slate-50 text-slate-900">

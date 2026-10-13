@@ -3,8 +3,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
+import { useSession } from '@/lib/session-context';
 
-interface User { id: string; email: string; role: string }
 interface Strategy {
   id: number; name: string; formula: string; timeframe: string;
   created_at: string; updated_at: string; version_no?: number;
@@ -18,9 +18,8 @@ interface Version { id: number; strategy_id: number; version_no: number; name: s
 export default function SelectionStrategyPage() {
   const params = useParams<{ strategyId: string }>();
   const router = useRouter();
+  const { user } = useSession();
   const strategyId = Array.isArray(params?.strategyId) ? params.strategyId[0] : params?.strategyId;
-  const [user, setUser] = useState<User | null>(null);
-  const [authLoading, setAuthLoading] = useState(true);
   const [strategy, setStrategy] = useState<Strategy | null>(null);
   const [versions, setVersions] = useState<Version[]>([]);
   const [loading, setLoading] = useState(true);
@@ -29,20 +28,6 @@ export default function SelectionStrategyPage() {
   const [formula, setFormula] = useState('');
   const [timeframe, setTimeframe] = useState('D');
   const [error, setError] = useState('');
-
-  useEffect(() => {
-    let mounted = true;
-    (async () => {
-      try {
-        const res = await fetch('/api/auth/session', { cache: 'no-store' });
-        const json = await res.json();
-        if (!mounted) return;
-        if (json.user) { setUser(json.user); setAuthLoading(false); }
-        else router.replace('/login');
-      } catch { if (mounted) router.replace('/login'); }
-    })();
-    return () => { mounted = false; };
-  }, [router]);
 
   const refresh = useCallback(async () => {
     if (!strategyId) return;
@@ -111,7 +96,7 @@ export default function SelectionStrategyPage() {
     router.push('/strategies');
   };
 
-  if (authLoading) return <main className="min-h-screen flex items-center justify-center bg-slate-50"><div className="w-8 h-8 border-4 border-blue-500/20 border-t-blue-600 rounded-full animate-spin" /></main>;
+  if (!user) return null;
 
   return (
       <main className="min-h-screen p-4 md:p-8 bg-slate-50 text-slate-900">
