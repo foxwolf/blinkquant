@@ -30,6 +30,9 @@ const routeFiles = [
 for (const [route, relativePath] of routeFiles) {
   assert.ok(existsSync(resolve(root, relativePath)), `Missing route ${route}: ${relativePath}`);
 }
+for (const special of ['src/app/error.tsx', 'src/app/not-found.tsx']) {
+  assert.ok(existsSync(resolve(root, special)), `Missing global boundary: ${special}`);
+}
 
 const home = readFileSync(resolve(root, 'src/app/(app)/page.tsx'), 'utf8');
 const select = readFileSync(resolve(root, 'src/app/(app)/select/page.tsx'), 'utf8');
