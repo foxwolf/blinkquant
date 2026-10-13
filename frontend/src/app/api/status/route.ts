@@ -1,4 +1,5 @@
-import { NextResponse } from 'next/server';
+import { NextResponse, NextRequest } from 'next/server';
+import { requireAuth } from '@/lib/auth';
 
 export const runtime = 'edge';
 
@@ -8,7 +9,11 @@ const NODES = [
   'https://scanli-blinkquant-node3.hf.space/api/v1/status'
 ];
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const auth = await requireAuth(req);
+  if (!auth.user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: auth.status });
+  }
   try {
     // 并发请求所有节点状态
     const statusPromises = NODES.map(async (url, index) => {
@@ -43,8 +48,8 @@ export async function GET() {
       nodes: results
     }, {
       headers: {
-        // 设置 5秒 的短缓存，避免频繁刷新导致前端卡顿
-        'Cache-Control': 'public, s-maxage=5, stale-while-revalidate=5'
+        // 登录后可读的节点指标，禁止 CDN 公共缓存
+        'Cache-Control': 'private, no-store'
       }
     });
 

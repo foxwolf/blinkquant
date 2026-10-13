@@ -67,7 +67,7 @@
 用户认证链路与管理员功能属于既有生产能力；IA5.10 后，除认证数据外的用户业务资产不再依赖 Neon/Postgres，而统一由 Node1 SQLite 持久化。
 
 ### 注意事项
-- 现有 `select`/`kline`/`search`/`stock-list` 前端 API 已加登录守卫；`status` 与后端 `/api/v1/health` 保持公开。
+- 现有 `select`/`kline`/`search`/`stock-list` 前端 API 已加登录守卫；`status` 于 P2-3 也已加登录守卫（仅 `/system` 页登录后消费），后端 `/api/v1/health` 保持公开。
 - 测试命令：`cd frontend && node --test tests/auth.test.mjs`；类型检查 `npx tsc --noEmit`。
 - jose `setExpirationTime` 传秒数必须 `Math.floor(Date.now()/1000) + TTL`（jose 按 epoch 秒解释数字），已在实现中正确处理。
 - 项目 `strict: false`（strictNullChecks 关闭），AuthResult 设计为始终携带 user/status 字段，避免判别联合收窄失效。

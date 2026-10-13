@@ -67,6 +67,14 @@ for (const [name, source] of [
 const workspace = readFileSync(resolve(root, 'src/components/select/SelectionWorkspace.tsx'), 'utf8');
 assert.doesNotMatch(workspace, /\/api\/status/, 'Selection workspace must not poll the legacy /api/status endpoint');
 
+const statusRoute = readFileSync(resolve(root, 'src/app/api/status/route.ts'), 'utf8');
+assert.match(statusRoute, /requireAuth\(req\)/, '/api/status must require login (no unauthenticated hardware metrics)');
+assert.match(statusRoute, /private, no-store/, '/api/status must not be publicly CDN-cached');
+
+const systemPage = readFileSync(resolve(root, 'src/app/system/page.tsx'), 'utf8');
+assert.match(systemPage, /NodeHealthCards metricsNodes=\{metricsNodes\}/, '/system must feed /api/status metrics into NodeHealthCards');
+assert.match(systemPage, /fetch\('\/api\/status'/, '/system must own the single /api/status refresh cycle');
+
 for (const removed of [
   'src/components/TaskList.tsx',
   'src/components/ClusterStatusBar.tsx',
