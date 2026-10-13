@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { Task } from '@/hooks/useCluster';
 import { usePolling } from '@/lib/polling';
+import { useSession } from '@/lib/session-context';
 
 const STATUS_LABELS: Record<string, string> = {
   pending: '等待中',
@@ -43,8 +44,7 @@ function fmtTime(value: string | null) {
 
 export default function TaskCenterPage() {
   const router = useRouter();
-  const [user, setUser] = useState<{ id: string; email: string; role: string } | null>(null);
-  const [authLoading, setAuthLoading] = useState(true);
+  const { user } = useSession();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [status, setStatus] = useState('all');
   const [type, setType] = useState('all');
@@ -75,26 +75,6 @@ export default function TaskCenterPage() {
       if (!background) setLoading(false);
     }
   }, []);
-
-  useEffect(() => {
-    let mounted = true;
-    (async () => {
-      try {
-        const res = await fetch('/api/auth/session', { cache: 'no-store' });
-        const json = await res.json();
-        if (!mounted) return;
-        if (json.user) {
-          setUser(json.user);
-          setAuthLoading(false);
-        } else {
-          router.replace('/login');
-        }
-      } catch {
-        if (mounted) router.replace('/login');
-      }
-    })();
-    return () => { mounted = false; };
-  }, [router]);
 
   useEffect(() => {
     if (user) void load();
@@ -131,9 +111,7 @@ export default function TaskCenterPage() {
     }
   };
 
-  if (authLoading) {
-    return <main className="min-h-screen flex items-center justify-center bg-slate-50"><div className="w-8 h-8 border-4 border-blue-500/20 border-t-blue-600 rounded-full animate-spin" /></main>;
-  }
+  if (!user) return null;
 
   const filtered = tasks.filter((task) => {
     if (status !== 'all' && task.status !== status) return false;

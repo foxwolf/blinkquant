@@ -2,9 +2,9 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import type { Task } from '@/hooks/useCluster';
 import { usePolling } from '@/lib/polling';
+import { useSession } from '@/lib/session-context';
 
 type ArtifactKind = 'all' | 'selection' | 'backtest';
 
@@ -38,10 +38,8 @@ function backtestMeta(task: Task) {
 }
 
 export default function ArtifactLibraryPage({ kind = 'all' }: { kind?: ArtifactKind }) {
-  const router = useRouter();
+  const { user } = useSession();
   const fileRef = useRef<HTMLInputElement>(null);
-  const [user, setUser] = useState<{ id: string; email: string; role: string } | null>(null);
-  const [authLoading, setAuthLoading] = useState(true);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(0);
@@ -87,26 +85,6 @@ export default function ArtifactLibraryPage({ kind = 'all' }: { kind?: ArtifactK
     }
   }, [kind, page, pageSize, search]);
 
-  useEffect(() => {
-    let mounted = true;
-    (async () => {
-      try {
-        const res = await fetch('/api/auth/session', { cache: 'no-store' });
-        const json = await res.json();
-        if (!mounted) return;
-        if (json.user) {
-          setUser(json.user);
-          setAuthLoading(false);
-        } else {
-          router.replace('/login');
-        }
-      } catch {
-        if (mounted) router.replace('/login');
-      }
-    })();
-    return () => { mounted = false; };
-  }, [router]);
-
   useEffect(() => { if (user) void load(); }, [user, load]);
   usePolling(() => void load({ background: true }), 5000, { enabled: !!user });
   useEffect(() => { setPage(0); }, [kind, search]);
@@ -149,9 +127,7 @@ export default function ArtifactLibraryPage({ kind = 'all' }: { kind?: ArtifactK
     }
   };
 
-  if (authLoading) {
-    return <main className="min-h-screen flex items-center justify-center bg-slate-50"><div className="w-8 h-8 border-4 border-blue-500/20 border-t-blue-600 rounded-full animate-spin" /></main>;
-  }
+  if (!user) return null;
 
   const filtered = tasks;
   const pageCount = Math.max(1, Math.ceil(storage.filteredTotal / pageSize));

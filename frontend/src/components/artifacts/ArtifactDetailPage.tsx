@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import type { Task } from '@/hooks/useCluster';
+import { useSession } from '@/lib/session-context';
 import ArtifactDataViewer from '@/components/artifacts/ArtifactDataViewer';
 import SignalTracePanel from '@/components/artifacts/SignalTracePanel';
 
@@ -22,34 +23,13 @@ function labelTaskType(value: string) {
 export default function ArtifactDetailPage({ kind }: { kind: 'selection' | 'backtest' }) {
   const params = useParams<{ artifactId: string }>();
   const router = useRouter();
-  const [user, setUser] = useState<{ id: string; email: string; role: string } | null>(null);
-  const [authLoading, setAuthLoading] = useState(true);
+  const { user } = useSession();
   const [task, setTask] = useState<Task | null>(null);
   const [loading, setLoading] = useState(true);
   const [watchlists, setWatchlists] = useState<Array<{ id: number; name: string; item_count: number }>>([]);
   const [selectedWatchlist, setSelectedWatchlist] = useState<number | ''>('');
   const [savingToWatchlist, setSavingToWatchlist] = useState(false);
   const [savedCount, setSavedCount] = useState<number | null>(null);
-
-  useEffect(() => {
-    let mounted = true;
-    (async () => {
-      try {
-        const res = await fetch('/api/auth/session', { cache: 'no-store' });
-        const json = await res.json();
-        if (!mounted) return;
-        if (json.user) {
-          setUser(json.user);
-          setAuthLoading(false);
-        } else {
-          router.replace('/login');
-        }
-      } catch {
-        if (mounted) router.replace('/login');
-      }
-    })();
-    return () => { mounted = false; };
-  }, [router]);
 
   useEffect(() => {
     if (!user || !params?.artifactId) return;
@@ -106,9 +86,7 @@ export default function ArtifactDetailPage({ kind }: { kind: 'selection' | 'back
     }
   };
 
-  if (authLoading) {
-    return <main className="min-h-screen flex items-center justify-center bg-slate-50"><div className="w-8 h-8 border-4 border-blue-500/20 border-t-blue-600 rounded-full animate-spin" /></main>;
-  }
+  if (!user) return null;
 
   const payload = (task as any)?.payload || {};
   const selectionSource = payload.selection_strategy_snapshot;

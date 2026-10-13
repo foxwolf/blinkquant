@@ -9,35 +9,14 @@ import SelectionResultsSidebar from './SelectionResultsSidebar';
 import StockResearchPanel from './StockResearchPanel';
 import useStockResearch from '@/hooks/useStockResearch';
 import useSelection, { type SelectionStrategySnapshot } from '@/hooks/useSelection';
+import { useSession } from '@/lib/session-context';
 
 const StrategyList = dynamic(() => import('../StrategyList'), { ssr: false });
 
 export default function SelectionWorkspace() {
   const router = useRouter();
-  const [user, setUser] = useState<{ id: string; email: string; role: string } | null>(null);
-  const [authLoading, setAuthLoading] = useState(true);
+  const { user } = useSession();
 
-  useEffect(() => {
-    let mounted = true;
-    (async () => {
-      try {
-        const res = await fetch('/api/auth/session', { cache: 'no-store' });
-        const json = await res.json();
-        if (!mounted) return;
-        if (json.user) {
-          setUser(json.user);
-        } else {
-          router.replace('/login');
-        }
-      } catch (error) {
-        console.error('Failed to load session', error);
-        if (mounted) router.replace('/login');
-      } finally {
-        if (mounted) setAuthLoading(false);
-      }
-    })();
-    return () => { mounted = false; };
-  }, [router]);
   const [showStrategies, setShowStrategies] = useState(false);
   const [saveStrategyOpen, setSaveStrategyOpen] = useState(false);
   const [showAISelect, setShowAISelect] = useState(false);
@@ -195,13 +174,7 @@ export default function SelectionWorkspace() {
     setShowStrategies(false);
   }, [setFormula, setTimeframe]);
 
-  if (authLoading) {
-    return (
-      <main className="min-h-screen flex items-center justify-center bg-slate-50 text-slate-900 font-sans">
-        <div className="w-8 h-8 border-4 border-blue-500/20 border-t-blue-600 rounded-full animate-spin"></div>
-      </main>
-    );
-  }
+  if (!user) return null;
 
   return (
       <main className="min-h-screen p-4 md:p-8 font-sans bg-slate-50 text-slate-900">
