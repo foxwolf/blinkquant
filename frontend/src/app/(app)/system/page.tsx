@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import NodeHealthCards, { type MetricsNode } from '@/components/system/NodeHealthCards';
+import { usePolling } from '@/lib/polling';
 
 interface User { id: string; email: string; role: string }
 interface ClusterNode {
@@ -147,9 +148,9 @@ export default function SystemStatusPage() {
   useEffect(() => {
     if (!user) return;
     void refresh();
-    const timer = window.setInterval(() => { void refresh(true); }, 10000);
-    return () => window.clearInterval(timer);
   }, [user, refresh]);
+
+  usePolling(() => void refresh(true), 10000, { enabled: !!user });
 
   const nodes = cluster?.nodes || [];
   const stats = cluster?.queueStats || {};

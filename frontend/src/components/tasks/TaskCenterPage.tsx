@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { Task } from '@/hooks/useCluster';
+import { usePolling } from '@/lib/polling';
 
 const STATUS_LABELS: Record<string, string> = {
   pending: '等待中',
@@ -99,11 +100,7 @@ export default function TaskCenterPage() {
     if (user) void load();
   }, [user, load]);
 
-  useEffect(() => {
-    if (!user) return;
-    const id = window.setInterval(() => void load({ background: true }), 3000);
-    return () => window.clearInterval(id);
-  }, [user, load]);
+  usePolling(() => void load({ background: true }), 3000, { enabled: !!user });
 
   const cancel = async (taskId: number) => {
     setBusyId(taskId);

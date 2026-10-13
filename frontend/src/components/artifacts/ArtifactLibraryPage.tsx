@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { Task } from '@/hooks/useCluster';
+import { usePolling } from '@/lib/polling';
 
 type ArtifactKind = 'all' | 'selection' | 'backtest';
 
@@ -107,11 +108,7 @@ export default function ArtifactLibraryPage({ kind = 'all' }: { kind?: ArtifactK
   }, [router]);
 
   useEffect(() => { if (user) void load(); }, [user, load]);
-  useEffect(() => {
-    if (!user) return;
-    const timer = window.setInterval(() => void load({ background: true }), 5000);
-    return () => window.clearInterval(timer);
-  }, [user, load]);
+  usePolling(() => void load({ background: true }), 5000, { enabled: !!user });
   useEffect(() => { setPage(0); }, [kind, search]);
   useEffect(() => {
     const lastPage = Math.max(0, Math.ceil(storage.filteredTotal / pageSize) - 1);

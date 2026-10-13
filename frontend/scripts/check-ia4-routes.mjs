@@ -75,20 +75,27 @@ const systemPage = readFileSync(resolve(root, 'src/app/(app)/system/page.tsx'), 
 assert.match(systemPage, /NodeHealthCards metricsNodes=\{metricsNodes\}/, '/system must feed /api/status metrics into NodeHealthCards');
 assert.match(systemPage, /fetch\('\/api\/status'/, '/system must own the single /api/status refresh cycle');
 
-function walkTsx(dir) {
+function walkSource(dir) {
   const out = [];
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
     const p = resolve(dir, entry.name);
-    if (entry.isDirectory()) out.push(...walkTsx(p));
-    else if (entry.name.endsWith('.tsx')) out.push(p);
+    if (entry.isDirectory()) out.push(...walkSource(p));
+    else if (entry.name.endsWith('.ts') || entry.name.endsWith('.tsx')) out.push(p);
   }
   return out;
 }
-const shellImporters = walkTsx(resolve(root, 'src'))
-  .filter((p) => readFileSync(p, 'utf8').includes('AppShell'))
-  .map((p) => p.slice(root.length + 1).split('\\').join('/'))
+const relative = (p) => p.slice(root.length + 1).split('\\').join('/');
+const shellImporters = walkSource(resolve(root, 'src'))
+  .filter((p) => p.endsWith('.tsx') && readFileSync(p, 'utf8').includes('AppShell'))
+  .map(relative)
   .filter((p) => p !== 'src/components/app/AppShell.tsx' && p !== 'src/app/(app)/layout.tsx');
 assert.deepEqual(shellImporters, [], `Only the (app) layout may render AppShell, found: ${shellImporters.join(', ')}`);
+
+const intervalSites = walkSource(resolve(root, 'src'))
+  .filter((p) => readFileSync(p, 'utf8').includes('setInterval'))
+  .map(relative)
+  .filter((p) => p !== 'src/lib/polling.ts');
+assert.deepEqual(intervalSites, [], `setInterval must live only in src/lib/polling.ts, found: ${intervalSites.join(', ')}`);
 
 const useClusterSrc = readFileSync(resolve(root, 'src/hooks/useCluster.ts'), 'utf8');
 assert.doesNotMatch(useClusterSrc, /setInterval/, 'useCluster must not background-poll; consumers only use submitTask');
