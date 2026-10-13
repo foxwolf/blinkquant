@@ -3,7 +3,6 @@
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
-import AppShell from '@/components/app/AppShell';
 
 interface User { id: string; email: string; role: string }
 
@@ -167,9 +166,6 @@ export default function BacktestStrategyDetailPage() {
   const benchmark = config.benchmark || {};
 
   return (
-    <AppShell user={user} onLogout={async () => {
-      try { await fetch('/api/auth/logout', { method: 'POST' }); } finally { router.replace('/login'); }
-    }}>
       <main className="min-h-screen p-4 md:p-8 bg-slate-50 text-slate-900">
         <div className="max-w-5xl mx-auto space-y-5">
           <div className="flex items-center gap-2 text-sm text-slate-500">
@@ -299,6 +295,5 @@ export default function BacktestStrategyDetailPage() {
           )}
         </div>
       </main>
-    </AppShell>
   );
 }

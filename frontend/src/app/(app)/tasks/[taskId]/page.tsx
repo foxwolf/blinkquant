@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import AppShell from '@/components/app/AppShell';
 import type { Task } from '@/hooks/useCluster';
 
 const STATUS_LABELS: Record<string, string> = {
@@ -60,15 +59,9 @@ export default function TaskDetailPage() {
     return () => { mounted = false; window.clearInterval(interval); };
   }, [user, taskId]);
 
-  const logout = async () => {
-    await fetch('/api/auth/logout', { method: 'POST' }).catch(() => undefined);
-    router.replace('/login');
-  };
-
   if (authLoading) return <main className="min-h-screen flex items-center justify-center bg-slate-50"><div className="w-8 h-8 border-4 border-blue-500/20 border-t-blue-600 rounded-full animate-spin" /></main>;
 
   return (
-    <AppShell user={user} onLogout={logout}>
       <main className="min-h-screen p-4 md:p-8 bg-slate-50 text-slate-900">
         <div className="max-w-5xl mx-auto space-y-6">
           <div className="flex flex-wrap items-end justify-between gap-4">
@@ -169,6 +162,5 @@ export default function TaskDetailPage() {
           )}
         </div>
       </main>
-    </AppShell>
   );
 }

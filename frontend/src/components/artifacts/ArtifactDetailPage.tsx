@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import AppShell from '@/components/app/AppShell';
 import type { Task } from '@/hooks/useCluster';
 import ArtifactDataViewer from '@/components/artifacts/ArtifactDataViewer';
 import SignalTracePanel from '@/components/artifacts/SignalTracePanel';
@@ -146,10 +145,6 @@ export default function ArtifactDetailPage({ kind }: { kind: 'selection' | 'back
   };
 
   return (
-    <AppShell user={user} onLogout={async () => {
-      await fetch('/api/auth/logout', { method: 'POST' }).catch(() => undefined);
-      router.replace('/login');
-    }}>
       <main className="min-h-screen p-4 md:p-8 bg-slate-50 text-slate-900">
         <div className="max-w-6xl mx-auto space-y-5">
           <div className="flex flex-wrap items-end justify-between gap-4">
@@ -346,6 +341,5 @@ export default function ArtifactDetailPage({ kind }: { kind: 'selection' | 'back
           )}
         </div>
       </main>
-    </AppShell>
   );
 }

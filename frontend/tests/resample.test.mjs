@@ -1,5 +1,5 @@
 // frontend/tests/resample.test.mjs
-// Copy implementation to avoid TS import (same as src/app/page.tsx resampleData)
+// Copy implementation to avoid TS import (same as src/app/(app)/page.tsx resampleData)
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 

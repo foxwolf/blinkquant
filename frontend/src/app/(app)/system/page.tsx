@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import AppShell from '@/components/app/AppShell';
 import NodeHealthCards, { type MetricsNode } from '@/components/system/NodeHealthCards';
 
 interface User { id: string; email: string; role: string }
@@ -152,11 +151,6 @@ export default function SystemStatusPage() {
     return () => window.clearInterval(timer);
   }, [user, refresh]);
 
-  const logout = useCallback(async () => {
-    await fetch('/api/auth/logout', { method: 'POST' }).catch(() => undefined);
-    router.replace('/login');
-  }, [router]);
-
   const nodes = cluster?.nodes || [];
   const stats = cluster?.queueStats || {};
   const healthyCount = nodes.filter((node) => ['idle', 'running'].includes(node.status || '')).length;
@@ -167,7 +161,6 @@ export default function SystemStatusPage() {
   }
 
   return (
-    <AppShell user={user} onLogout={logout}>
       <main className="mx-auto max-w-7xl space-y-6 px-4 py-8 md:px-8">
         <NodeHealthCards metricsNodes={metricsNodes} schedulerNodes={nodes} queues={cluster?.queues} />
 
@@ -264,6 +257,5 @@ export default function SystemStatusPage() {
           <Link href="/tasks" className="text-sm font-semibold text-blue-600 hover:text-blue-700">前往任务中心 →</Link>
         </div>
       </main>
-    </AppShell>
   );
 }

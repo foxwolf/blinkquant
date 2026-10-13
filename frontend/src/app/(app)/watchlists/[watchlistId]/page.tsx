@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import AppShell from '@/components/app/AppShell';
 import StockSearch from '@/components/StockSearch';
 import Watchlist from '@/components/Watchlist';
 
@@ -108,15 +107,9 @@ export default function WatchlistDetailPage() {
     } catch (error) { alert(error instanceof Error ? error.message : '删除失败'); }
   }, [router, watchlist, watchlistId]);
 
-  const handleLogout = useCallback(async () => {
-    try { await fetch('/api/auth/logout', { method: 'POST' }); }
-    finally { router.replace('/login'); }
-  }, [router]);
-
   if (authLoading) return <main className="min-h-screen flex items-center justify-center bg-slate-50"><div className="w-8 h-8 border-4 border-blue-500/20 border-t-blue-600 rounded-full animate-spin" /></main>;
 
   return (
-    <AppShell user={user} onLogout={handleLogout}>
       <main className="min-h-screen p-4 md:p-8 bg-slate-50 text-slate-900">
         <div className="max-w-6xl mx-auto space-y-5">
           <div className="flex flex-wrap items-end justify-between gap-4">
@@ -159,6 +152,5 @@ export default function WatchlistDetailPage() {
           </div>}
         </div>
       </main>
-    </AppShell>
   );
 }

@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import AppShell from '@/components/app/AppShell';
 
 interface User { id: string; email: string; role: string }
 interface Strategy {
@@ -112,14 +111,9 @@ export default function SelectionStrategyPage() {
     router.push('/strategies');
   };
 
-  const handleLogout = useCallback(async () => {
-    try { await fetch('/api/auth/logout', { method: 'POST' }); } finally { router.replace('/login'); }
-  }, [router]);
-
   if (authLoading) return <main className="min-h-screen flex items-center justify-center bg-slate-50"><div className="w-8 h-8 border-4 border-blue-500/20 border-t-blue-600 rounded-full animate-spin" /></main>;
 
   return (
-    <AppShell user={user} onLogout={handleLogout}>
       <main className="min-h-screen p-4 md:p-8 bg-slate-50 text-slate-900">
         <div className="max-w-6xl mx-auto space-y-5">
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -196,6 +190,5 @@ export default function SelectionStrategyPage() {
           </> : null}
         </div>
       </main>
-    </AppShell>
   );
 }

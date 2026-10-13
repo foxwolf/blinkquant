@@ -4,7 +4,6 @@ import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import AISelectModal from '../AISelectModal';
 import { useCluster } from '@/hooks/useCluster';
-import AppShell from '../app/AppShell';
 import SelectionControls from './SelectionControls';
 import SelectionResultsSidebar from './SelectionResultsSidebar';
 import StockResearchPanel from './StockResearchPanel';
@@ -162,15 +161,6 @@ export default function SelectionWorkspace() {
     }
   }, [watchlistCodes]);
 
-  const handleLogout = useCallback(async () => {
-    try {
-      await fetch('/api/auth/logout', { method: 'POST' });
-    } catch (e) {
-      console.error('Logout failed', e);
-    }
-    router.replace('/login');
-  }, [router]);
-
   const handleSaveStrategy = useCallback(async () => {
     if (!strategyName.trim()) return;
     try {
@@ -214,10 +204,6 @@ export default function SelectionWorkspace() {
   }
 
   return (
-    <AppShell
-      user={user}
-      onLogout={handleLogout}
-    >
       <main className="min-h-screen p-4 md:p-8 font-sans bg-slate-50 text-slate-900">
       <div className="max-w-7xl mx-auto space-y-6">
         <SelectionControls
@@ -316,6 +302,5 @@ export default function SelectionWorkspace() {
         />
       )}
       </main>
-    </AppShell>
   );
 }
