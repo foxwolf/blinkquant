@@ -33,7 +33,7 @@ for (const [route, relativePath] of routeFiles) {
 
 const home = readFileSync(resolve(root, 'src/app/(app)/page.tsx'), 'utf8');
 const select = readFileSync(resolve(root, 'src/app/(app)/select/page.tsx'), 'utf8');
-assert.match(home, /SelectionWorkspace/, 'Home must keep the selection workspace as the default workflow');
+assert.match(home, /redirect\(['"]\/select['"]\)/, 'Home must redirect to the canonical /select workspace');
 assert.match(select, /SelectionWorkspace/, '/select must reuse the same selection workspace');
 assert.ok(!existsSync(resolve(root, 'src/app/(app)/page.tsx.working')), 'Obsolete aggregate page backup must be removed');
 

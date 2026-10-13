@@ -1,5 +1,5 @@
-import SelectionWorkspace from '@/components/select/SelectionWorkspace';
+import { redirect } from 'next/navigation';
 
 export default function Home() {
-  return <SelectionWorkspace />;
+  redirect('/select');
 }
