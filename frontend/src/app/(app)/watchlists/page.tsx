@@ -4,8 +4,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { downloadFromResponse } from '@/lib/download';
+import { useSession } from '@/lib/session-context';
 
-interface User { id: string; email: string; role: string }
 interface WatchlistSummary {
   id: string; name: string; is_default: boolean; item_count: number;
   created_at: string; updated_at: string;
@@ -13,27 +13,12 @@ interface WatchlistSummary {
 
 export default function WatchlistsPage() {
   const router = useRouter();
+  const { user } = useSession();
   const fileRef = useRef<HTMLInputElement>(null);
-  const [user, setUser] = useState<User | null>(null);
-  const [authLoading, setAuthLoading] = useState(true);
   const [lists, setLists] = useState<WatchlistSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
   const [name, setName] = useState('');
-
-  useEffect(() => {
-    let mounted = true;
-    (async () => {
-      try {
-        const res = await fetch('/api/auth/session', { cache: 'no-store' });
-        const json = await res.json();
-        if (!mounted) return;
-        if (json.user) { setUser(json.user); setAuthLoading(false); }
-        else router.replace('/login');
-      } catch { if (mounted) router.replace('/login'); }
-    })();
-    return () => { mounted = false; };
-  }, [router]);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -84,8 +69,6 @@ export default function WatchlistsPage() {
       else await refresh();
     } catch { alert('创建失败'); }
   };
-
-  if (authLoading) return <main className="min-h-screen flex items-center justify-center bg-slate-50"><div className="w-8 h-8 border-4 border-blue-500/20 border-t-blue-600 rounded-full animate-spin" /></main>;
 
   return (
       <main className="min-h-screen p-4 md:p-8 bg-slate-50 text-slate-900">

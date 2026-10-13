@@ -2,11 +2,10 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import NodeHealthCards, { type MetricsNode } from '@/components/system/NodeHealthCards';
 import { usePolling } from '@/lib/polling';
+import { useSession } from '@/lib/session-context';
 
-interface User { id: string; email: string; role: string }
 interface ClusterNode {
   node_id: string;
   name?: string;
@@ -91,33 +90,13 @@ function QueuePanel({ title, section }: { title: string; section?: QueueSection 
 }
 
 export default function SystemStatusPage() {
-  const router = useRouter();
-  const [user, setUser] = useState<User | null>(null);
-  const [authLoading, setAuthLoading] = useState(true);
+  const { user } = useSession();
   const [cluster, setCluster] = useState<ClusterStatus | null>(null);
   const [metricsNodes, setMetricsNodes] = useState<MetricsNode[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
   const [updatedAt, setUpdatedAt] = useState<string | null>(null);
-
-  useEffect(() => {
-    let mounted = true;
-    (async () => {
-      try {
-        const res = await fetch('/api/auth/session', { cache: 'no-store' });
-        const json = await res.json();
-        if (!mounted) return;
-        if (json.user) {
-          setUser(json.user);
-          setAuthLoading(false);
-        } else router.replace('/login');
-      } catch {
-        if (mounted) router.replace('/login');
-      }
-    })();
-    return () => { mounted = false; };
-  }, [router]);
 
   const refresh = useCallback(async (quiet = false) => {
     if (quiet) setRefreshing(true);
@@ -156,10 +135,6 @@ export default function SystemStatusPage() {
   const stats = cluster?.queueStats || {};
   const healthyCount = nodes.filter((node) => ['idle', 'running'].includes(node.status || '')).length;
   const nodeCount = nodes.length;
-
-  if (authLoading) {
-    return <div className="min-h-screen grid place-items-center text-sm text-slate-500">正在验证登录状态…</div>;
-  }
 
   return (
       <main className="mx-auto max-w-7xl space-y-6 px-4 py-8 md:px-8">
