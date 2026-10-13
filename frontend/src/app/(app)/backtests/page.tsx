@@ -24,7 +24,6 @@ export default function BacktestsPage() {
     backtestResult,
     backtestLoading,
     handleBacktest,
-    clearBacktestState,
   } = useBacktest({ submitTask, strategyTemplateId });
 
   useEffect(() => {
