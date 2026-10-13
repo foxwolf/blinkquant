@@ -117,17 +117,6 @@ export default function useBacktest({
   }, [clearBacktestState]);
 
   useEffect(() => {
-    const handler = (e: Event) => {
-      const detail = (e as CustomEvent).detail;
-      if (detail?.taskId) {
-        setBacktestResult({ taskId: detail.taskId, summary: detail.summary });
-      }
-    };
-    window.addEventListener('openBacktestResult', handler);
-    return () => window.removeEventListener('openBacktestResult', handler);
-  }, []);
-
-  useEffect(() => {
     let timer: ReturnType<typeof setTimeout> | undefined;
     if (backtestLoading) {
       timer = setTimeout(() => {

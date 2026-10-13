@@ -86,7 +86,7 @@ export default function StrategiesPage() {
       const payload = 'id' in template ? { id: template.id } : { config: template.config };
       sessionStorage.setItem('bq-pending-backtest-template', JSON.stringify(payload));
     }
-    router.push('/select?tab=backtest');
+    router.push('/backtests');
   };
 
   const removeBacktest = async (template: BacktestStrategyTemplate) => {
@@ -126,7 +126,7 @@ export default function StrategiesPage() {
       formula: strategy.formula,
       timeframe: strategy.timeframe,
     }));
-    router.push('/select?tab=backtest');
+    router.push('/backtests');
   };
 
   const useStrategy = (strategy: Strategy) => {

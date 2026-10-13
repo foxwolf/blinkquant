@@ -113,7 +113,7 @@ export default function BacktestStrategyDetailPage() {
   const openWorkspace = () => {
     if (!template) return;
     sessionStorage.setItem('bq-pending-backtest-template', JSON.stringify({ id: template.id }));
-    router.push('/select?tab=backtest');
+    router.push('/backtests');
   };
 
   const extractVersion = async (versionNo?: number, versionName?: string) => {

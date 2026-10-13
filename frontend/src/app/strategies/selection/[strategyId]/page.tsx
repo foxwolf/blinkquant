@@ -93,7 +93,7 @@ export default function SelectionStrategyPage() {
       formula: version.formula,
       timeframe: version.timeframe,
     }));
-    router.push('/select?tab=backtest');
+    router.push('/backtests');
   };
 
   const useVersion = (version: Pick<Version, 'name' | 'formula' | 'timeframe' | 'version_no'>) => {

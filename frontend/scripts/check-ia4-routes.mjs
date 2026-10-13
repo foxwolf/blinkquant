@@ -55,6 +55,29 @@ for (const [label, href] of [
   assert.ok(nav.includes(`{ label: '${label}', href: '${href}', enabled: true }`), `Navigation item must be enabled: ${label}`);
 }
 
+for (const [name, source] of [
+  ['/strategies', readFileSync(resolve(root, 'src/app/strategies/page.tsx'), 'utf8')],
+  ['/strategies/selection/[strategyId]', readFileSync(resolve(root, 'src/app/strategies/selection/[strategyId]/page.tsx'), 'utf8')],
+  ['/strategies/backtest/[strategyId]', readFileSync(resolve(root, 'src/app/strategies/backtest/[strategyId]/page.tsx'), 'utf8')],
+]) {
+  assert.doesNotMatch(source, /\/select\?tab=backtest/, `${name} must not deep-link to the removed select-page backtest panel`);
+  assert.match(source, /router\.push\('\/backtests'\)/, `${name} must open the backtest workspace at /backtests`);
+}
+
+const workspace = readFileSync(resolve(root, 'src/components/select/SelectionWorkspace.tsx'), 'utf8');
+assert.doesNotMatch(workspace, /\/api\/status/, 'Selection workspace must not poll the legacy /api/status endpoint');
+
+for (const removed of [
+  'src/components/TaskList.tsx',
+  'src/components/ClusterStatusBar.tsx',
+  'src/lib/theme.ts',
+  'src/app/api/select/route.ts',
+  'src/app/api/backtest/route.ts',
+  'src/app/api/search/route.ts',
+]) {
+  assert.ok(!existsSync(resolve(root, removed)), `Removed dead code must not come back: ${removed}`);
+}
+
 const strategyImport = readFileSync(resolve(root, 'src/app/api/strategies/import/route.ts'), 'utf8');
 const strategyCreate = readFileSync(resolve(root, 'src/app/api/strategies/route.ts'), 'utf8');
 const strategyUpdate = readFileSync(resolve(root, 'src/app/api/strategies/[id]/route.ts'), 'utf8');
