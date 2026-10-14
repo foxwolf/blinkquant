@@ -270,7 +270,7 @@ export default function SelectionWorkspace() {
           onClose={() => setShowAISelect(false)}
           onRun={(formula, timeframe, date) => {
             setShowAISelect(false);
-            handleSelect({ formula, timeframe, date });
+            handleSelect({ formula, timeframe, date: date || selectDate || undefined });
           }}
         />
       )}
