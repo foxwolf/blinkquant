@@ -18,7 +18,6 @@ interface MainNavProps {
 
 const NAV_ITEMS = [
   { label: '选股', href: '/select', enabled: true },
-  { label: '股票研究', href: '/stocks', enabled: true },
   { label: '自选股', href: '/watchlists', enabled: true },
   { label: '策略库', href: '/strategies', enabled: true },
   { label: '回测研究', href: '/backtests', enabled: true },
