@@ -44,10 +44,16 @@ const legacyWatchlist = resolve(root, 'src/app/watchlist/page.tsx');
 assert.ok(existsSync(legacyWatchlist), 'Legacy /watchlist alias must exist');
 assert.match(readFileSync(legacyWatchlist, 'utf8'), /redirect\(['"]\/watchlists['"]\)/, 'Legacy /watchlist must redirect to canonical /watchlists');
 
+const stocksHome = readFileSync(resolve(root, 'src/app/(app)/stocks/page.tsx'), 'utf8');
+assert.match(stocksHome, /redirect\(['"]\/select['"]\)/, '/stocks must redirect to canonical /select');
+
+const stocksSymbol = readFileSync(resolve(root, 'src/app/(app)/stocks/[symbol]/page.tsx'), 'utf8');
+assert.match(stocksSymbol, /redirect\(/, '/stocks/[symbol] must redirect to the select workspace');
+assert.ok(stocksSymbol.includes('/select?code='), '/stocks/[symbol] must deep-link the symbol via /select?code=');
+
 const nav = readFileSync(resolve(root, 'src/components/app/MainNav.tsx'), 'utf8');
 for (const [label, href] of [
   ['选股', '/select'],
-  ['股票研究', '/stocks'],
   ['自选股', '/watchlists'],
   ['策略库', '/strategies'],
   ['回测研究', '/backtests'],
@@ -153,4 +159,4 @@ assert.match(strategyExtract, /node1Json/);
 assert.match(strategyExtract, /\/user-assets\/strategies/);
 assert.match(strategyExtract, /Cookie: req\.headers\.get\('cookie'\) \|\| ''/);
 
-console.log(`IA4 route regression PASS: ${routeFiles.length} routes, shared selection workspace, 8 enabled navigation items, /watchlist compatibility redirect, and atomic strategy/version persistence checks.`);
+console.log(`IA4 route regression PASS: ${routeFiles.length} routes, shared selection workspace, 7 enabled navigation items, /watchlist compatibility redirect, and atomic strategy/version persistence checks.`);

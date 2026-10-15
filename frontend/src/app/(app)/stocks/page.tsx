@@ -1,5 +1,6 @@
-import StockResearchPage from '@/components/stocks/StockResearchPage';
+import { redirect } from 'next/navigation';
 
-export default function Page() {
-  return <StockResearchPage />;
+// Backward-compatible alias for bookmarks and manually typed legacy URLs.
+export default function StocksRedirect() {
+  redirect('/select');
 }
