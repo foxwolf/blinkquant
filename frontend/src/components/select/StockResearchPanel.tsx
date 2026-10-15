@@ -83,8 +83,25 @@ export default function StockResearchPanel({
   return (
       <section className="fixed inset-x-2 top-16 bottom-2 z-40 lg:left-auto lg:right-4 lg:top-auto lg:bottom-4 lg:w-[min(560px,calc(100vw-2rem))] lg:h-[min(640px,calc(100vh-12rem))] rounded-2xl border border-slate-200 bg-white shadow-lg overflow-hidden">
             <div ref={chartWrapperRef} className="flex flex-col h-full w-full">
-              <div className="px-4 py-3 border-b flex flex-wrap justify-between items-center gap-2 bg-white z-10 shrink-0">
+              <div className="relative px-4 py-3 pr-32 border-b flex flex-wrap justify-between items-center gap-2 bg-white z-10 shrink-0">
                 <StockSearch stockList={stockList} onSelect={onViewStock} />
+                <div className="absolute right-3 top-2.5 z-20 flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => { void onToggleFullscreen(); }}
+                    className="px-3 py-1 text-xs font-bold text-slate-600 border border-slate-200 bg-white rounded-md hover:bg-slate-100 transition-colors"
+                  >
+                    {isFullScreen ? '退出全屏' : '全屏'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    aria-label="Close stock chart"
+                    className="px-3 py-1 text-xs font-bold text-slate-600 border border-slate-200 bg-white rounded-md hover:text-red-600 hover:border-red-200 hover:bg-red-50 transition-colors"
+                  >
+                    ✕
+                  </button>
+                </div>
                 {selectedStock && (
                   <>
                     <div className="flex flex-col items-start min-w-0">
@@ -207,12 +224,6 @@ export default function StockResearchPanel({
       )}
     </div>
     )}
-                        <button
-                          onClick={() => { void onToggleFullscreen(); }}
-                          className="px-3 py-1 text-xs font-bold text-slate-600 border border-slate-200 bg-white rounded-md mr-2 hover:bg-slate-100 transition-colors"
-                        >
-                          {isFullScreen ? '退出全屏' : '全屏'}
-                        </button>
                         {TIMEFRAMES.map((tf) => (
                           <button key={tf.value} onClick={() => onChangeChartTimeframe(tf.value)}
                             className={`px-3 py-1 text-xs font-bold rounded-md ${chartTimeframe === tf.value ? 'bg-blue-600 text-white shadow' : 'text-slate-500 hover:bg-slate-200/50'}`}
@@ -220,14 +231,6 @@ export default function StockResearchPanel({
                             {tf.label}
                           </button>
                         ))}
-                        <button
-                          type="button"
-                          onClick={onClose}
-                          aria-label="Close stock chart"
-                          className="px-3 py-1 text-xs font-bold rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-200/50 transition-colors"
-                        >
-                          ✕
-                        </button>
                       </div>
                     </div>
                   </>
