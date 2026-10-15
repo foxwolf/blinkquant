@@ -2,9 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import WatchlistPicker from '../WatchlistPicker';
-import Watchlist from '../Watchlist';
-
-type SidebarTab = 'results' | 'watchlist';
 
 interface WatchlistSummary {
   id: string;
@@ -73,87 +70,54 @@ function BulkWatchlistBar({ codes, onChanged }: { codes: string[]; onChanged?: (
 }
 
 interface SelectionResultsSidebarProps {
-  sidebarTab: SidebarTab;
-  onTabChange: (tab: SidebarTab) => void;
   selectMeta: { date?: string | null; degraded?: boolean } | null;
   results: string[];
-  watchlistCodes: string[];
   selectedCode: string | null | undefined;
   stockList: Array<{ code: string; name: string }>;
   onViewStock: (code: string) => void;
-  onRemoveWatchlist: (code: string) => void;
-  onWatchlistChanged?: () => void | Promise<void>;
 }
 
 export default function SelectionResultsSidebar(props: SelectionResultsSidebarProps) {
   const {
-    sidebarTab, onTabChange, selectMeta, results, watchlistCodes, selectedCode,
-    stockList, onViewStock, onRemoveWatchlist, onWatchlistChanged,
+    selectMeta, results, selectedCode, stockList, onViewStock,
   } = props;
 
   return (
     <aside className="lg:col-span-1 order-1 lg:order-1">
-      <div className="bg-white rounded-2xl border flex flex-col h-[600px] shadow-sm">
+      <div className="bg-white rounded-2xl border flex flex-col shadow-sm">
         <div className="p-4 border-b flex justify-between items-center bg-slate-50/50">
-          <div className="flex gap-1">
-            <button
-              onClick={() => onTabChange('results')}
-              className={`px-3 py-1 text-xs font-bold rounded-lg ${sidebarTab === 'results' ? 'bg-blue-600 text-white' : 'text-slate-500 hover:bg-slate-200/50'}`}
-            >
-              结果
-            </button>
-            <button
-              onClick={() => onTabChange('watchlist')}
-              className={`px-3 py-1 text-xs font-bold rounded-lg ${sidebarTab === 'watchlist' ? 'bg-blue-600 text-white' : 'text-slate-500 hover:bg-slate-200/50'}`}
-            >
-              自选
-            </button>
+          <span className="text-sm font-bold text-slate-700">结果</span>
+          <div className="flex items-center gap-2">
+            {selectMeta?.date && (
+              <span className="bg-slate-100 text-slate-600 text-xs px-2 py-0.5 rounded-full font-mono">
+                {selectMeta.date}
+              </span>
+            )}
+            <span className="bg-blue-100 text-blue-700 text-xs px-2 py-0.5 rounded-full font-mono">{results.length}</span>
           </div>
-          {sidebarTab === 'results' && (
-            <div className="flex items-center gap-2">
-              {selectMeta?.date && (
-                <span className="bg-slate-100 text-slate-600 text-xs px-2 py-0.5 rounded-full font-mono">
-                  {selectMeta.date}
-                </span>
-              )}
-              <span className="bg-blue-100 text-blue-700 text-xs px-2 py-0.5 rounded-full font-mono">{results.length}</span>
-            </div>
-          )}
         </div>
-        {sidebarTab === 'results' && selectMeta?.degraded && (
+        {selectMeta?.degraded && (
           <div className="mx-2 mt-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
             部分计算节点响应失败，本次结果可能不完整，建议重试。
           </div>
         )}
-        {sidebarTab === 'watchlist' ? (
-          <div className="flex-1 overflow-y-auto p-2 custom-scrollbar">
-            <Watchlist
-              codes={watchlistCodes}
-              selectedCode={selectedCode}
-              onSelect={onViewStock}
-              onRemove={onRemoveWatchlist}
-              stockList={stockList}
-            />
-          </div>
-        ) : (
-          <div className="flex-1 overflow-y-auto p-2 custom-scrollbar">
-            {results.length > 0 && <BulkWatchlistBar codes={results} onChanged={onWatchlistChanged} />}
-            {results.map(code => {
-              const name = stockList.find(s => s.code === code)?.name || code;
-              return (
-                <div key={code} className={`rounded-lg mb-1 ${selectedCode === code ? 'bg-blue-50 border border-blue-100' : ''}`}>
-                  <div className="flex items-center gap-2 px-2">
-                    <button onClick={() => onViewStock(code)} className={`flex-1 min-w-0 text-left px-2 py-3 rounded-lg flex justify-between group ${selectedCode === code ? 'text-blue-700 font-bold' : 'hover:bg-slate-50 text-slate-600'}`}>
-                      <span className="truncate">{name}</span>
-                      <span className="text-xs font-mono text-slate-400 ml-2">{code}</span>
-                    </button>
-                    <WatchlistPicker code={code} compact />
-                  </div>
+        <div className="overflow-y-auto p-2 max-h-[65vh] custom-scrollbar">
+          {results.length > 0 && <BulkWatchlistBar codes={results} />}
+          {results.map(code => {
+            const name = stockList.find(s => s.code === code)?.name || code;
+            return (
+              <div key={code} className={`rounded-lg mb-1 ${selectedCode === code ? 'bg-blue-50 border border-blue-100' : ''}`}>
+                <div className="flex items-center gap-2 px-2">
+                  <button onClick={() => onViewStock(code)} className={`flex-1 min-w-0 text-left px-2 py-3 rounded-lg flex justify-between group ${selectedCode === code ? 'text-blue-700 font-bold' : 'hover:bg-slate-50 text-slate-600'}`}>
+                    <span className="truncate">{name}</span>
+                    <span className="text-xs font-mono text-slate-400 ml-2">{code}</span>
+                  </button>
+                  <WatchlistPicker code={code} compact />
                 </div>
-              );
-            })}
-          </div>
-        )}
+              </div>
+            );
+          })}
+        </div>
       </div>
     </aside>
   );

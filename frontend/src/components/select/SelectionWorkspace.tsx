@@ -21,7 +21,6 @@ export default function SelectionWorkspace() {
   const [showStrategies, setShowStrategies] = useState(false);
   const [saveStrategyOpen, setSaveStrategyOpen] = useState(false);
   const [showAISelect, setShowAISelect] = useState(false);
-  const [sidebarTab, setSidebarTab] = useState<'results' | 'watchlist'>('results');
   const [strategyName, setStrategyName] = useState('');
   const [selectionStrategySource, setSelectionStrategySource] = useState<SelectionStrategySnapshot | undefined>(undefined);
   const { submitTask } = useCluster();
@@ -71,24 +70,6 @@ export default function SelectionWorkspace() {
     onClearSelectedStock: clearSelectedStock,
   });
 
-  const [watchlistCodes, setWatchlistCodes] = useState<string[]>([]);
-
-  const refreshWatchlist = useCallback(async () => {
-    try {
-      const res = await fetch('/api/watchlist', { cache: 'no-store' });
-      if (res.ok) {
-        const json = await res.json();
-        setWatchlistCodes(json.codes || []);
-      }
-    } catch (e) {
-      console.error('Failed to load watchlist', e);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (user) refreshWatchlist();
-  }, [user, refreshWatchlist]);
-
   // 从策略库进入选股工作台时，读取一次待恢复的策略并清理会话标记。
   useEffect(() => {
     if (!user) return;
@@ -132,25 +113,6 @@ export default function SelectionWorkspace() {
   const handleViewStock = useCallback((code: string) => {
     void viewStock(code);
   }, [viewStock]);
-
-  const toggleWatchlist = useCallback(async (code: string) => {
-    const exists = watchlistCodes.includes(code);
-    try {
-      if (exists) {
-        await fetch(`/api/watchlist?code=${encodeURIComponent(code)}`, { method: 'DELETE' });
-        setWatchlistCodes((prev) => prev.filter((c) => c !== code));
-      } else {
-        await fetch('/api/watchlist', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ code }),
-        });
-        setWatchlistCodes((prev) => [...prev, code]);
-      }
-    } catch (e) {
-      console.error('Failed to toggle watchlist', e);
-    }
-  }, [watchlistCodes]);
 
   const handleSaveStrategy = useCallback(async () => {
     if (!strategyName.trim()) return;
@@ -211,16 +173,11 @@ export default function SelectionWorkspace() {
         {/* Results Area */}
         <div>
           <SelectionResultsSidebar
-            sidebarTab={sidebarTab}
-            onTabChange={setSidebarTab}
             selectMeta={selectMeta}
             results={results}
-            watchlistCodes={watchlistCodes}
             selectedCode={selectedStock?.code}
             stockList={stockList}
             onViewStock={handleViewStock}
-            onRemoveWatchlist={toggleWatchlist}
-            onWatchlistChanged={refreshWatchlist}
           />
           {selectedStock && (
             <StockResearchPanel
