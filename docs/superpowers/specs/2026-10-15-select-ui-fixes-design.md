@@ -27,7 +27,7 @@
 ### R1 卡片右上角窗口控件（`StockResearchPanel.tsx`）
 
 - 灰色工具组（`bg-slate-50 rounded-lg p-1 border border-slate-200`）**移除**全屏按钮与 ✕，保留：复权下拉 + 日/周/月。
-- 头部容器（`px-4 py-3 border-b flex flex-wrap justify-between items-center gap-2 bg-white z-10 shrink-0`）加 `relative pr-32`（预留角落空间，防内容钻入控件下方）。
+- 头部容器（`px-4 py-3 border-b flex flex-wrap justify-between items-center gap-2 bg-white z-10 shrink-0`）加 `relative pr-36`（预留角落空间，防内容钻入控件下方；实施评审后由 pr-32 上调）。
 - 新增角落控件容器（绝对定位，任何换行状态都钉在右上角）：
 
 ```tsx
@@ -42,7 +42,7 @@
   <button
     type="button"
     onClick={onClose}
-    aria-label="Close stock chart"
+    aria-label="关闭K线图"
     className="px-3 py-1 text-xs font-bold text-slate-600 border border-slate-200 bg-white rounded-md hover:text-red-600 hover:border-red-200 hover:bg-red-50 transition-colors"
   >
     ✕
@@ -50,7 +50,7 @@
 </div>
 ```
 
-- 尺寸核算：「退出全屏」按钮 ≈ 72px + gap 6 + ✕ ≈ 36px + right-3 12px ≈ 126px ≤ `pr-32`（128px）。
+- 尺寸核算：「退出全屏」按钮 ≈ 74px + gap 6 + ✕ ≈ 38px + right-3 12px ≈ 130px ≤ `pr-36`（144px，余量 ≥14px）。
 - 全屏态：控件随 `<section>` 一起进入浏览器全屏 → 仍可退出/关闭；关闭自动退全屏逻辑（`fullscreenchange` hook 级监听）不动。
 - `z-20` 位于头部内容（z-10）之上、卡内搜索联想（z-30，居左）之下——不冲突。
 - 门禁 `/onClose/` 断言保持命中（✕ 的 `onClick={onClose}` 仍在 panel 文件中）。
