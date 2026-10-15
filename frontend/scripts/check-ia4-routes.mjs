@@ -75,6 +75,7 @@ for (const [name, source] of [
 
 const workspace = readFileSync(resolve(root, 'src/components/select/SelectionWorkspace.tsx'), 'utf8');
 assert.doesNotMatch(workspace, /\/api\/status/, 'Selection workspace must not poll the legacy /api/status endpoint');
+assert.doesNotMatch(workspace, /\/stocks\//, 'Selection workspace must not deep-link to the removed standalone /stocks page');
 
 const statusRoute = readFileSync(resolve(root, 'src/app/api/status/route.ts'), 'utf8');
 assert.match(statusRoute, /requireAuth\(req\)/, '/api/status must require login (no unauthenticated hardware metrics)');

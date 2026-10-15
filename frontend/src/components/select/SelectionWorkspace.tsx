@@ -117,9 +117,20 @@ export default function SelectionWorkspace() {
     }
   }, [user, setFormula, setTimeframe]);
 
+  // Deep link: 旧股票研究页桩重定向到 /select?code=<symbol>，此处消费后清理 URL。
+  // App Router 的 useRouter() 无 .query，深链必经 /stocks 桩跨路由落地（组件必重新挂载），effect 读 window.location 即可。
+  useEffect(() => {
+    if (!user || typeof window === 'undefined') return;
+    const codeParam = new URLSearchParams(window.location.search).get('code');
+    if (!codeParam) return;
+    if (stockList.length === 0) return;
+    router.replace('/select', { scroll: false });
+    void viewStock(decodeURIComponent(codeParam));
+  }, [router, user, stockList.length, viewStock]);
+
   const handleViewStock = useCallback((code: string) => {
-    router.push(`/stocks/${encodeURIComponent(code)}`);
-  }, [router]);
+    void viewStock(code);
+  }, [viewStock]);
 
   const toggleWatchlist = useCallback(async (code: string) => {
     const exists = watchlistCodes.includes(code);
