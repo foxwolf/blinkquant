@@ -112,7 +112,7 @@
 
 | 文件 | 改动 |
 |---|---|
-| `frontend/src/components/select/StockResearchPanel.tsx` | R1：头部 relative+pr-32、角落控件组、全屏/✕ 移出灰组 |
+| `frontend/src/components/select/StockResearchPanel.tsx` | R1：头部 relative+pr-36、角落控件组、全屏/✕ 移出灰组 |
 | `frontend/src/components/select/SelectionWorkspace.tsx` | R2 插入搜索卡；R3 删 tab 态与 watchlist 管道 |
 | `frontend/src/components/StockSearch.tsx` | R2：可选 `className` prop |
 | `frontend/src/components/select/SelectionResultsSidebar.tsx` | R3：删 tab、头部新布局、高度自适应 |
