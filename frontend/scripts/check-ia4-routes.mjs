@@ -76,6 +76,10 @@ for (const [name, source] of [
 const workspace = readFileSync(resolve(root, 'src/components/select/SelectionWorkspace.tsx'), 'utf8');
 assert.doesNotMatch(workspace, /\/api\/status/, 'Selection workspace must not poll the legacy /api/status endpoint');
 assert.doesNotMatch(workspace, /\/stocks\//, 'Selection workspace must not deep-link to the removed standalone /stocks page');
+assert.match(workspace, /\{selectedStock && /, 'Selection workspace must mount the chart panel on demand');
+assert.doesNotMatch(workspace, /lg:grid-cols-4/, 'Panel column must be removed from the selection workspace grid');
+const panel = readFileSync(resolve(root, 'src/components/select/StockResearchPanel.tsx'), 'utf8');
+assert.match(panel, /onClose/, 'Chart panel must expose a close wiring');
 
 const statusRoute = readFileSync(resolve(root, 'src/app/api/status/route.ts'), 'utf8');
 assert.match(statusRoute, /requireAuth\(req\)/, '/api/status must require login (no unauthenticated hardware metrics)');
@@ -160,4 +164,4 @@ assert.match(strategyExtract, /node1Json/);
 assert.match(strategyExtract, /\/user-assets\/strategies/);
 assert.match(strategyExtract, /Cookie: req\.headers\.get\('cookie'\) \|\| ''/);
 
-console.log(`IA4 route regression PASS: ${routeFiles.length} routes, shared selection workspace, 7 enabled navigation items, /watchlist compatibility redirect, and atomic strategy/version persistence checks.`);
+console.log(`IA4 route regression PASS: ${routeFiles.length} routes, shared selection workspace, 7 enabled navigation items, /watchlist compatibility redirect, floating K-line card (on-demand mount + close wiring), and atomic strategy/version persistence checks.`);

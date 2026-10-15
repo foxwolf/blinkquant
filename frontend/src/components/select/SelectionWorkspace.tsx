@@ -202,7 +202,7 @@ export default function SelectionWorkspace() {
         />
 
         {/* Results Area */}
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 md:gap-6">
+        <div>
           <SelectionResultsSidebar
             sidebarTab={sidebarTab}
             onTabChange={setSidebarTab}
@@ -215,32 +215,35 @@ export default function SelectionWorkspace() {
             onRemoveWatchlist={toggleWatchlist}
             onWatchlistChanged={refreshWatchlist}
           />
-          <StockResearchPanel
-            selectedStock={selectedStock}
-            stockList={stockList}
-            sectors={sectors}
-            expandedSectors={expandedSectors}
-            chartLoading={chartLoading}
-            chartTimeframe={chartTimeframe}
-            onChangeChartTimeframe={changeChartTimeframe}
-            subChartType={subChartType}
-            onChangeSubChartType={setSubChartType}
-            mainChartType={mainChartType}
-            onChangeMainChartType={setMainChartType}
-            isFullScreen={isFullScreen}
-            chartWrapperRef={chartWrapperRef}
-            adjustMode={adjustMode}
-            adjustMenuOpen={adjustMenuOpen}
-            adjustMenuRef={adjustMenuRef}
-            onChangeAdjustMode={changeAdjustMode}
-            onChangeAdjustMenuOpen={setAdjustMenuOpen}
-            onChangeSectorsExpanded={setExpandedSectors}
-            onViewStock={handleViewStock}
-            onViewSector={viewSector}
-            lastStockRef={lastStockRef}
-            onReturnToStock={returnToStock}
-            onToggleFullscreen={toggleFullscreen}
-          />
+          {selectedStock && (
+            <StockResearchPanel
+              selectedStock={selectedStock}
+              stockList={stockList}
+              sectors={sectors}
+              expandedSectors={expandedSectors}
+              chartLoading={chartLoading}
+              chartTimeframe={chartTimeframe}
+              onChangeChartTimeframe={changeChartTimeframe}
+              subChartType={subChartType}
+              onChangeSubChartType={setSubChartType}
+              mainChartType={mainChartType}
+              onChangeMainChartType={setMainChartType}
+              isFullScreen={isFullScreen}
+              chartWrapperRef={chartWrapperRef}
+              adjustMode={adjustMode}
+              adjustMenuOpen={adjustMenuOpen}
+              adjustMenuRef={adjustMenuRef}
+              onChangeAdjustMode={changeAdjustMode}
+              onChangeAdjustMenuOpen={setAdjustMenuOpen}
+              onChangeSectorsExpanded={setExpandedSectors}
+              onViewStock={handleViewStock}
+              onViewSector={viewSector}
+              lastStockRef={lastStockRef}
+              onReturnToStock={returnToStock}
+              onToggleFullscreen={toggleFullscreen}
+              onClose={clearSelectedStock}
+            />
+          )}
         </div>
       </div>
 

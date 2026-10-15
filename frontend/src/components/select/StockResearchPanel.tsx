@@ -69,6 +69,7 @@ interface StockResearchPanelProps {
   lastStockRef: MutableRefObject<{ code: string; name: string } | null>;
   onReturnToStock: () => void;
   onToggleFullscreen: () => Promise<void>;
+  onClose: () => void;
 }
 
 export default function StockResearchPanel({
@@ -77,11 +78,11 @@ export default function StockResearchPanel({
   subChartType, onChangeSubChartType, mainChartType, onChangeMainChartType, isFullScreen,
   chartWrapperRef, adjustMode, adjustMenuOpen, adjustMenuRef, onChangeAdjustMode,
   onChangeAdjustMenuOpen, onChangeSectorsExpanded, onViewStock, onViewSector,
-  lastStockRef, onReturnToStock, onToggleFullscreen
+  lastStockRef, onReturnToStock, onToggleFullscreen, onClose
 }: StockResearchPanelProps) {
   return (
-      <section className="lg:col-span-3 order-2 lg:order-2">
-            <div ref={chartWrapperRef} className="bg-white rounded-2xl border flex flex-col h-[600px] shadow-sm w-full">
+      <section className="fixed inset-x-2 top-16 bottom-2 z-40 lg:left-auto lg:right-4 lg:top-auto lg:bottom-4 lg:w-[min(560px,calc(100vw-2rem))] lg:h-[min(640px,calc(100vh-12rem))] rounded-2xl border border-slate-200 bg-white shadow-lg overflow-hidden">
+            <div ref={chartWrapperRef} className="flex flex-col h-full w-full">
               <div className="px-4 py-3 border-b flex flex-wrap justify-between items-center gap-2 bg-white z-10 shrink-0">
                 <StockSearch stockList={stockList} onSelect={onViewStock} />
                 {selectedStock && (
@@ -219,6 +220,14 @@ export default function StockResearchPanel({
                             {tf.label}
                           </button>
                         ))}
+                        <button
+                          type="button"
+                          onClick={onClose}
+                          aria-label="Close stock chart"
+                          className="px-3 py-1 text-xs font-bold rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-200/50 transition-colors"
+                        >
+                          ✕
+                        </button>
                       </div>
                     </div>
                   </>
@@ -227,18 +236,14 @@ export default function StockResearchPanel({
               
               <div className="flex-1 w-full h-full relative p-1">
                 {chartLoading && <div className="absolute inset-0 z-20 bg-white/60 backdrop-blur-sm flex items-center justify-center"><div className="w-8 h-8 border-4 border-blue-500/20 border-t-blue-600 rounded-full animate-spin"></div></div>}
-                {selectedStock ? (
-                  <KLineChart
-                    code={selectedStock.code}
-                    data={selectedStock.data}
-                    subChartType={subChartType}
-                    onSubChartTypeChange={onChangeSubChartType}
-                    mainChartType={mainChartType}
-                    onMainChartTypeChange={onChangeMainChartType}
-                  />
-                ) : (
-                  <div className="h-full flex items-center justify-center text-slate-400 bg-slate-50">选择股票查看图表</div>
-                )}
+                <KLineChart
+                  code={selectedStock.code}
+                  data={selectedStock.data}
+                  subChartType={subChartType}
+                  onSubChartTypeChange={onChangeSubChartType}
+                  mainChartType={mainChartType}
+                  onMainChartTypeChange={onChangeMainChartType}
+                />
               </div>
             </div>
       </section>
