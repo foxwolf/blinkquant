@@ -7,6 +7,7 @@ import { useCluster } from '@/hooks/useCluster';
 import SelectionControls from './SelectionControls';
 import SelectionResultsSidebar from './SelectionResultsSidebar';
 import StockResearchPanel from './StockResearchPanel';
+import StockSearch from '../StockSearch';
 import useStockResearch from '@/hooks/useStockResearch';
 import useSelection, { type SelectionStrategySnapshot } from '@/hooks/useSelection';
 import { useSession } from '@/lib/session-context';
@@ -190,6 +191,12 @@ export default function SelectionWorkspace() {
   return (
       <main className="min-h-screen p-4 md:p-8 font-sans bg-slate-50 text-slate-900">
       <div className="max-w-7xl mx-auto space-y-6">
+        <section aria-label="股票搜索" className="bg-white p-4 md:p-6 rounded-2xl border border-slate-200 shadow-sm">
+          <div className="flex flex-col gap-3">
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">股票搜索</label>
+            <StockSearch stockList={stockList} onSelect={handleViewStock} className="w-full max-w-md" />
+          </div>
+        </section>
         <SelectionControls
           formula={formula}
           selectDate={selectDate}

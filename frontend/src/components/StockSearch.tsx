@@ -5,9 +5,10 @@ import { searchStocks, type StockItem } from '../utils/stockSearch';
 interface StockSearchProps {
   stockList: StockItem[];
   onSelect: (code: string) => void;
+  className?: string;
 }
 
-export default function StockSearch({ stockList, onSelect }: StockSearchProps) {
+export default function StockSearch({ stockList, onSelect, className }: StockSearchProps) {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<StockItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -74,7 +75,7 @@ export default function StockSearch({ stockList, onSelect }: StockSearchProps) {
   return (
     <>
       {/* 桌面端：工具栏内联搜索框（md+ 显示） */}
-      <div className="relative hidden md:block w-64 shrink-0">
+      <div className={`relative hidden md:block ${className ?? 'w-64 shrink-0'}`}>
         <input
           className={inputClass}
           placeholder="搜索股票：名称/代码/拼音"
