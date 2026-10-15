@@ -40,7 +40,8 @@
 - **z-40 是唯一安全层**：低于 MainNav（z-50）与全部模态（z-50）——卡打开时再开 AI 选股/保存策略弹窗，弹窗照常盖卡；卡内 StockSearch 下拉（z-30）、图表菜单（z-20）在卡片自身堆叠上下文内，不受影响。
 - 无遮罩 backdrop：卡只是盒子，下层列表仍可滚动、点击。
 - 头部（`:85` 工具条）右侧加"关闭"按钮（紧邻"全屏"按钮），调用新增 prop `onClose: () => void`。
-- 删除空态占位分支（`:239-241` "选择股票查看图表"）——无卡即无图；`selectedStock ? <KLineChart/> : 占位` 简化为直接渲染 `<KLineChart/>`（卡片只在 selectedStock 存在时挂载）。
+- 删除空态占位分支（`:230-241` 三元中的 "选择股票查看图表"）——无卡即无图；简化为直接渲染 `<KLineChart/>`（卡片只在 selectedStock 存在时挂载）。
+- 已核实：新选股触发清空依赖 `handleSelect → clearResults() → onClearSelectedStock()`（useSelection.ts:39,45）。
 
 ### 3. 零改动清单
 
