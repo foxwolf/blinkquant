@@ -73,7 +73,9 @@
 
 - "查看股票"不再跳转独立页：图表在选股页内嵌面板打开，选股上下文（公式、日期、结果列表）保留。
 - 顶导航"股票研究"消失，研究能力从"选股"进入。
-- 旧 `/stocks/*` 链接继续可用（Next.js `redirect` 308 → `/select?code=...` 自动打开对应股票）。
+- 旧 `/stocks/*` 链接继续可用（Next.js `redirect` 307 → `/select?code=...` 自动打开对应股票）。
+
+> 生产回归备注（2026-10-14）：Next.js `redirect()` 默认 307（NEXT_REDIRECT payload，非经典 308+Location 头）。经生产黑盒确认目标全部正确；有意保持 307 与既有 `/watchlist` 桩（同为 `redirect()`）一致，不升级为 `permanentRedirect()`（308）。
 - `/select` 与 `/stocks` 一样受 (app) 组登录守卫，无鉴权行为差异。
 
 ## 验证
