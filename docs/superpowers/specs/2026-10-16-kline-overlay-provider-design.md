@@ -37,7 +37,7 @@
 - 内部持有**唯一** `useStockResearch()` 实例；挂载后即按现有缓存逻辑预热 `stockList`。
 - 状态 `pendingCode`：`stockList` 未就绪时暂存待开代码，就绪 effect 消费（自动触发一次后清空）。
 - 渲染：`{openPathRef.current === pathname && selectedStock && <StockResearchPanel … />}`（路由归属守卫：open 时记录 `openPathRef=path`，`closeKline` 置空；归属不符则不同步渲染，防迟到 fetch 在关闭/换页后复活浮窗），全量透传 hook 输出，接线与现 workspace 一致：
-  `onClose=clearSelectedStock`、`onViewStock=（包 viewStock）`、`onViewSector=viewSector`、`onToggleFullscreen=toggleFullscreen`、`onReturnToStock=returnToStock`、`onChangeAdjustMode/onChangeAdjustMenuOpen/onChangeSectorsExpanded` 及图表状态各 setter。
+  `onClose=closeKline`、`onViewStock=openKline`、`onViewSector=viewSector`、`onToggleFullscreen=toggleFullscreen`、`onReturnToStock=returnToStock`、`onChangeAdjustMode/onChangeAdjustMenuOpen/onChangeSectorsExpanded` 及图表状态各 setter。
 - Context API（`useKlineOverlay()`）：
   - `openKline(code: string)`：stockList 空则写入 `pendingCode`，否则 `viewStock(code)`；
   - `closeKline()`：`clearSelectedStock()` + 若 `isFullScreen` 则退出全屏（统一清理函数）；
