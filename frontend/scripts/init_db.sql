@@ -94,3 +94,22 @@ INSERT INTO strategy_versions (strategy_id, version_no, name, formula, timeframe
 SELECT id, 1, name, formula, timeframe, source_backtest_strategy_id, source_backtest_strategy_version, source_backtest_strategy_name, source_backtest_strategy_trigger, COALESCE(created_at, NOW())
 FROM strategies s
 WHERE NOT EXISTS (SELECT 1 FROM strategy_versions v WHERE v.strategy_id = s.id);
+
+-- 大模型设置：多套可切换，API Key 加密落库（密钥由 AUTH_SECRET 派生）
+CREATE TABLE IF NOT EXISTS llm_configs (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name TEXT NOT NULL,
+    endpoint TEXT NOT NULL,
+    model TEXT NOT NULL,
+    api_key_enc TEXT NOT NULL,
+    api_key_hint TEXT NOT NULL,
+    timeout_ms INTEGER NOT NULL DEFAULT 50000,
+    reasoning_effort TEXT NOT NULL DEFAULT 'low',
+    max_tokens INTEGER NOT NULL DEFAULT 1024,
+    template_kwargs TEXT,
+    is_active BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_llm_configs_one_active
+    ON llm_configs (is_active) WHERE is_active = TRUE;
