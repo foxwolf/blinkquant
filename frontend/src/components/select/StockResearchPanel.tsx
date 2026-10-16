@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import type { MutableRefObject, RefObject, Dispatch, SetStateAction } from 'react';
 import dynamic from 'next/dynamic';
 import StockSearch from '../StockSearch';
@@ -80,6 +81,11 @@ export default function StockResearchPanel({
   onChangeAdjustMenuOpen, onChangeSectorsExpanded, onViewStock, onViewSector,
   lastStockRef, onReturnToStock, onToggleFullscreen, onClose
 }: StockResearchPanelProps) {
+  // 移动端默认收起股票信息（板块/概念/指标），为 K 线图腾出更大面积；桌面端默认展开。
+  const [infoExpanded, setInfoExpanded] = useState<boolean>(
+    () => (typeof window === 'undefined' ? true : !window.matchMedia('(max-width: 1023px)').matches)
+  );
+
   return (
       <section className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[90vw] h-[70vh] z-[60] lg:left-auto lg:right-4 lg:top-auto lg:bottom-4 lg:translate-x-0 lg:translate-y-0 lg:w-[min(560px,calc(100vw-2rem))] lg:h-[min(640px,calc(100vh-12rem))] rounded-2xl border border-slate-200 bg-white shadow-lg overflow-hidden">
             <div ref={chartWrapperRef} className="flex flex-col h-full w-full">
@@ -104,12 +110,22 @@ export default function StockResearchPanel({
                   </div>
                 {selectedStock && (
                   <>
-                    <div className="flex flex-col items-start min-w-0">
-                      <div className="flex items-baseline">
+                    <div className="flex flex-col items-start min-w-0 w-full">
+                      <div className="flex items-baseline w-full gap-2">
                         <span className="text-xl font-bold">{selectedStock.code}</span>
                         <span className="ml-2 text-base font-medium text-slate-500 truncate">{selectedStock.name}</span>
+                        {selectedStock.kind === 'stock' && (
+                          <button
+                            type="button"
+                            onClick={() => setInfoExpanded((v) => !v)}
+                            aria-expanded={infoExpanded}
+                            className="ml-auto shrink-0 px-2 py-0.5 text-[10px] font-bold rounded-md border border-slate-200 bg-white text-slate-500 hover:bg-slate-100 transition-colors"
+                          >
+                            {infoExpanded ? '收起 ▲' : '展开 ▼'}
+                          </button>
+                        )}
                       </div>
-  {selectedStock.kind === 'stock' && (
+  {selectedStock.kind === 'stock' && infoExpanded && (
     <>
       <div className="w-full mt-1 flex flex-col gap-0.5">
         {SECTOR_GROUP_ORDER.map((type) => {
