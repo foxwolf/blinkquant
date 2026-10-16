@@ -84,9 +84,8 @@ export default function StockResearchPanel({
       <section className="fixed inset-0 z-40 lg:left-auto lg:right-4 lg:top-auto lg:bottom-4 lg:w-[min(560px,calc(100vw-2rem))] lg:h-[min(640px,calc(100vh-12rem))] rounded-2xl border border-slate-200 bg-white shadow-lg overflow-hidden">
             <div ref={chartWrapperRef} className="flex flex-col h-full w-full">
               <div className="relative px-4 py-3 border-b bg-white z-10 shrink-0">
-                <div className="flex items-center justify-between gap-2">
-                  <StockSearch stockList={stockList} onSelect={onViewStock} />
-                  <div className="flex items-center gap-1.5 shrink-0">
+                <StockSearch stockList={stockList} onSelect={onViewStock} />
+                <div className="absolute right-3 top-3 z-20 flex items-center gap-1.5 shrink-0">
                     <button
                       type="button"
                       onClick={() => { void onToggleFullscreen(); }}
@@ -103,7 +102,6 @@ export default function StockResearchPanel({
                       ✕
                     </button>
                   </div>
-                </div>
                 {selectedStock && (
                   <>
                     <div className="flex flex-col items-start min-w-0">
