@@ -2,14 +2,14 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { usePathname } from 'next/navigation';
-import useStockResearch from '@/hooks/useStockResearch';
+import useStockResearch, { type StockListItem } from '@/hooks/useStockResearch';
 import StockResearchPanel from '@/components/select/StockResearchPanel';
 
 interface KlineOverlayValue {
   openKline: (code: string) => void;
   closeKline: () => void;
   selectedCode: string | null;
-  stockList: Array<{ code: string; name: string }>;
+  stockList: StockListItem[];
   ready: boolean;
 }
 
@@ -50,7 +50,9 @@ export default function KlineOverlayProvider({ children }: { children: ReactNode
     returnToStock,
   } = useStockResearch();
 
+  const pathname = usePathname();
   const [pendingCode, setPendingCode] = useState<string | null>(null);
+  const openPathRef = useRef<string | null>(null);
   const stockListLengthRef = useRef(stockList.length);
 
   useEffect(() => {
@@ -58,27 +60,31 @@ export default function KlineOverlayProvider({ children }: { children: ReactNode
   }, [stockList.length]);
 
   const openKline = useCallback((code: string) => {
+    openPathRef.current = pathname;
     if (stockListLengthRef.current === 0) {
       setPendingCode(code);
       return;
     }
     void viewStock(code);
-  }, [viewStock]);
+  }, [viewStock, pathname]);
 
   const closeKline = useCallback(() => {
+    openPathRef.current = null;
+    setPendingCode(null);
     clearSelectedStock();
     if (document.fullscreenElement) {
       void document.exitFullscreen().catch(() => undefined);
     }
   }, [clearSelectedStock]);
 
-  // 预热完成前的排队请求，就绪后消费一次。
+  // 预热完成前的排队请求，就绪后消费一次（单窗语义：后到覆盖先到）。
   useEffect(() => {
     if (!pendingCode || stockList.length === 0) return;
     const code = pendingCode;
     setPendingCode(null);
+    openPathRef.current = pathname;
     void viewStock(code);
-  }, [pendingCode, stockList.length, viewStock]);
+  }, [pendingCode, stockList.length, viewStock, pathname]);
 
   // 换页即关。经 ref 调用，避免 closeKline 身份变化导致 effect 反复清空刚打开的浮窗。
   const closeRef = useRef(closeKline);
@@ -86,26 +92,30 @@ export default function KlineOverlayProvider({ children }: { children: ReactNode
     closeRef.current = closeKline;
   }, [closeKline]);
 
-  const pathname = usePathname();
   useEffect(() => {
-    closeRef.current();
+    if (openPathRef.current !== null && openPathRef.current !== pathname) closeRef.current();
   }, [pathname]);
+
+  // 迟到落地守卫：open 已被关闭或已换页时，丢弃刚落地的图表状态。
+  useEffect(() => {
+    if (selectedStock && openPathRef.current !== pathname) clearSelectedStock();
+  }, [selectedStock, pathname, clearSelectedStock]);
 
   const value = useMemo<KlineOverlayValue>(
     () => ({
       openKline,
       closeKline,
-      selectedCode: selectedStock?.code ?? null,
+      selectedCode: openPathRef.current === pathname && selectedStock ? selectedStock.code : null,
       stockList,
       ready: stockList.length > 0,
     }),
-    [openKline, closeKline, selectedStock?.code, stockList]
+    [openKline, closeKline, pathname, selectedStock, stockList]
   );
 
   return (
     <KlineOverlayContext.Provider value={value}>
       {children}
-      {selectedStock && (
+      {openPathRef.current === pathname && selectedStock && (
         <StockResearchPanel
           selectedStock={selectedStock}
           stockList={stockList}
