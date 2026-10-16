@@ -70,6 +70,17 @@ export default function WatchlistsPage() {
     } catch { alert('创建失败'); }
   };
 
+  const deleteList = async (id: string, name: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!confirm(`确定删除“${name}"？列表中的股票也会从该列表移除。`)) return;
+    try {
+      const res = await fetch(`/api/watchlists/${encodeURIComponent(id)}`, { method: 'DELETE' });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || '删除失败');
+      await refresh();
+    } catch (error) { alert(error instanceof Error ? error.message : '删除失败'); }
+  };
+
   return (
       <main className="min-h-screen p-4 md:p-8 bg-slate-50 text-slate-900">
         <div className="max-w-6xl mx-auto space-y-6">
@@ -98,6 +109,16 @@ export default function WatchlistsPage() {
                       <div className="text-xs text-slate-400 mt-1">{list.item_count} 只股票</div>
                     </div>
                     {list.is_default && <span className="shrink-0 text-[10px] font-bold px-2 py-1 rounded-full bg-blue-50 text-blue-600">默认</span>}
+                    {!list.is_default && (
+                      <button
+                        type="button"
+                        onClick={(e) => deleteList(list.id, list.name, e)}
+                        className="shrink-0 w-6 h-6 rounded-lg border border-slate-200 bg-white text-slate-400 text-xs font-bold hover:bg-red-50 hover:text-red-600 hover:border-red-200 flex items-center justify-center"
+                        aria-label={`删除“${list.name}"`}
+                      >
+                        ×
+                      </button>
+                    )}
                   </div>
                   <div className="mt-6 text-sm text-blue-600 font-semibold">打开列表 →</div>
                 </Link>
