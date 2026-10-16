@@ -12,7 +12,7 @@ interface SelectionResultsSidebarProps {
   selectMeta: { date?: string | null; degraded?: boolean } | null;
   results: string[];
   selectedCode: string | null | undefined;
-  stockList: Array<{ code: string; name: string }>;
+  stockList: Array<{ code: string; name: string; industry?: string }>;
   onViewStock: (code: string) => void;
 }
 
@@ -101,7 +101,9 @@ export default function SelectionResultsSidebar(props: SelectionResultsSidebarPr
         </div>
         <div className="overflow-y-auto p-2 max-h-[65vh] custom-scrollbar flex flex-col gap-1">
           {results.map(code => {
-            const name = stockList.find(s => s.code === code)?.name || code;
+            const stock = stockList.find(s => s.code === code);
+            const name = stock?.name || code;
+            const industry = stock?.industry;
             const isSelected = selectedCodes.has(code);
             return (
               <div key={code} className={`rounded-lg border border-slate-200 ${isSelected ? 'bg-blue-50 border-blue-100' : 'bg-white hover:bg-slate-50'}`}>
@@ -114,7 +116,7 @@ export default function SelectionResultsSidebar(props: SelectionResultsSidebarPr
                   />
                   <button onClick={() => onViewStock(code)} className={`flex-1 min-w-0 text-left px-2 py-2 rounded-lg flex justify-between group ${selectedCode === code ? 'text-blue-700 font-bold' : 'hover:bg-slate-50 text-slate-600'}`}>
                     <span className="truncate">{name}</span>
-                    <span className="text-xs font-mono text-slate-400 ml-2">{code}</span>
+                    <span className="text-xs text-slate-400 ml-2 truncate max-w-[45%]">{industry || '—'}</span>
                   </button>
                   <WatchlistPicker code={code} compact />
                 </div>

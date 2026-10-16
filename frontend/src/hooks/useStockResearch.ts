@@ -18,6 +18,7 @@ export interface SelectedStock {
 export interface StockListItem {
   code: string;
   name: string;
+  industry?: string;
 }
 
 function resampleDailyData(dailyData: any[], targetTimeframe: string): any[] {
@@ -168,7 +169,7 @@ export default function useStockResearch() {
 
   useEffect(() => {
     const loadStockList = async () => {
-      const CACHE_KEY = 'stockListCache_v1';
+      const CACHE_KEY = 'stockListCache_v2';
       const CACHE_EXPIRY_MS = 24 * 60 * 60 * 1000;
       const cachedStr = localStorage.getItem(CACHE_KEY);
 
@@ -188,7 +189,7 @@ export default function useStockResearch() {
       }
 
       try {
-        const res = await fetch('/api/stock-list');
+        const res = await fetch('/api/stock-list?v=2');
         if (!res.ok) throw new Error('Failed to load stock list');
 
         const data = await res.json();

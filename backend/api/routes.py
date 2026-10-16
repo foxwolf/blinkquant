@@ -1147,16 +1147,22 @@ def search_stocks(q: str):
 
 @router.get("/stock-list")
 def get_stock_list():
-    """返回所有股票代码与名称的映射，仅用于前端缓存"""
+    """返回所有股票代码、名称与行业板块，仅用于前端缓存"""
     # 调试：打印前10条数据
     sample = list(data_manager.code_to_name.items())[:10]
     logger.info(f"Stock list sample: {sample}")
-    
+
+    def _industry(code: str) -> str:
+        """该股票所属的行业板块名称，多个以 / 连接；无则空串"""
+        names = [name for _sc, name, typ in data_manager.stock_sectors.get(code, [])
+                 if typ == "行业板块" and name]
+        return "/".join(names)
+
     # 过滤掉空名称的股票
-    filtered = [{"code": code, "name": name}
+    filtered = [{"code": code, "name": name, "industry": _industry(code)}
                 for code, name in data_manager.code_to_name.items()
                 if name and name.strip()]
-    
+
     logger.info(f"Total stocks: {len(data_manager.code_to_name)}, Filtered: {len(filtered)}")
     return filtered
 
