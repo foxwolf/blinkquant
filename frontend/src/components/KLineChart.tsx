@@ -247,7 +247,7 @@ export default function KLineChart({
     checkMobile();
 
     const chart = createChart(chartContainerRef.current, {
-      layout: { background: { type: ColorType.Solid, color: '#ffffff' }, textColor: '#334155' },
+      layout: { background: { type: ColorType.Solid, color: '#ffffff' }, textColor: '#334155', attributionLogo: false },
       grid: { vertLines: { color: '#f1f5f9' }, horzLines: { color: '#f1f5f9' } },
       width: chartContainerRef.current.clientWidth,
       height: chartContainerRef.current.clientHeight,
