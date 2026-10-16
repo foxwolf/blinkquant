@@ -123,7 +123,7 @@
 - `useStockResearch`、`KLineChart`、深链 effect（`?code=` 消费）、门禁 3 断言与 PASS 文案不动（三项新改动均不触碰断言命中条件）。
 - 卡内头部其余元素（StockSearch、股票信息/板块 chips/指标行、复权、D/W/M）布局保留。
 - AI 选股、保存策略、策略库模态、MainNav 不动。
-- 无后端、无 hook、无测试文件改动。
+- 无后端、无 hook 改动；契约测试 `watchlists-contract.test.mjs`（IA5.4.3 末两条断言）同步更新，改为锁定无 `onChanged` 接线与工作区已移除 `refreshWatchlist`/`toggleWatchlist`/`sidebarTab`。
 
 ## 6. 验收
 
