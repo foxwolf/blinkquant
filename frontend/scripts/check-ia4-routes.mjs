@@ -76,8 +76,10 @@ for (const [name, source] of [
 const workspace = readFileSync(resolve(root, 'src/components/select/SelectionWorkspace.tsx'), 'utf8');
 assert.doesNotMatch(workspace, /\/api\/status/, 'Selection workspace must not poll the legacy /api/status endpoint');
 assert.doesNotMatch(workspace, /\/stocks\//, 'Selection workspace must not deep-link to the removed standalone /stocks page');
-assert.match(workspace, /\{selectedStock && /, 'Selection workspace must mount the chart panel on demand');
+assert.match(workspace, /openKline/, 'Selection workspace must drive the shared K-line overlay');
 assert.doesNotMatch(workspace, /lg:grid-cols-4/, 'Panel column must be removed from the selection workspace grid');
+const overlay = readFileSync(resolve(root, 'src/components/kline/KlineOverlayProvider.tsx'), 'utf8');
+assert.match(overlay, /openPathRef.current === pathname && selectedStock && /, 'K-line overlay provider must mount the chart panel behind the route-provenance guard');
 const panel = readFileSync(resolve(root, 'src/components/select/StockResearchPanel.tsx'), 'utf8');
 assert.match(panel, /onClose/, 'Chart panel must expose a close wiring');
 

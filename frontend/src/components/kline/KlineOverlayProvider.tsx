@@ -77,12 +77,12 @@ export default function KlineOverlayProvider({ children }: { children: ReactNode
     }
   }, [clearSelectedStock]);
 
-  // 预热完成前的排队请求，就绪后消费一次（单窗语义：后到覆盖先到）。
+  // 预热完成前的排队请求，就绪后按归属消费（归属不符=已换页，静默丢弃；单窗语义：后到覆盖先到）。
   useEffect(() => {
     if (!pendingCode || stockList.length === 0) return;
     const code = pendingCode;
     setPendingCode(null);
-    openPathRef.current = pathname;
+    if (openPathRef.current !== pathname) return;
     void viewStock(code);
   }, [pendingCode, stockList.length, viewStock, pathname]);
 

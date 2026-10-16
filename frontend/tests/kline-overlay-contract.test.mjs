@@ -30,3 +30,15 @@ test('kline overlay is mounted app-wide and wired into non-select entry points',
   assert.match(artifact, /onClick=\{\(\) => openKline\(/);
   assert.doesNotMatch(artifact, /href=\{'\/stocks\//);
 });
+
+test('selection workspace consumes the shared overlay instead of hosting its own panel', () => {
+  const workspace = read('src/components/select/SelectionWorkspace.tsx');
+  assert.match(workspace, /useKlineOverlay\(\)/);
+  assert.match(workspace, /openKline/);
+  assert.doesNotMatch(workspace, /StockResearchPanel/);
+  assert.doesNotMatch(workspace, /useStockResearch/);
+  const gate = read('scripts/check-ia4-routes.mjs');
+  assert.match(gate, /components\/kline\/KlineOverlayProvider/);
+  const layout = read('src/app/(app)/layout.tsx');
+  assert.match(layout, /<AppShell user=\{user\} onLogout=\{onLogout\}>\s*<KlineOverlayProvider>/);
+});

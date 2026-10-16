@@ -1,14 +1,13 @@
 'use client';
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import AISelectModal from '../AISelectModal';
 import { useCluster } from '@/hooks/useCluster';
 import SelectionControls from './SelectionControls';
 import SelectionResultsSidebar from './SelectionResultsSidebar';
-import StockResearchPanel from './StockResearchPanel';
 import StockSearch from '../StockSearch';
-import useStockResearch from '@/hooks/useStockResearch';
+import { useKlineOverlay } from '@/components/kline/KlineOverlayProvider';
 import useSelection, { type SelectionStrategySnapshot } from '@/hooks/useSelection';
 import { useSession } from '@/lib/session-context';
 
@@ -25,33 +24,7 @@ export default function SelectionWorkspace() {
   const [selectionStrategySource, setSelectionStrategySource] = useState<SelectionStrategySnapshot | undefined>(undefined);
   const { submitTask } = useCluster();
 
-  const {
-    chartTimeframe,
-    subChartType,
-    mainChartType,
-    setSubChartType,
-    setMainChartType,
-    changeChartTimeframe,
-    isFullScreen,
-    chartWrapperRef,
-    adjustMode,
-    adjustMenuOpen,
-    adjustMenuRef,
-    changeAdjustMode,
-    setAdjustMenuOpen,
-    selectedStock,
-    clearSelectedStock,
-    chartLoading,
-    sectors,
-    expandedSectors,
-    setExpandedSectors,
-    lastStockRef,
-    stockList,
-    viewStock,
-    viewSector,
-    toggleFullscreen,
-    returnToStock,
-  } = useStockResearch();
+  const { openKline, closeKline, selectedCode, stockList } = useKlineOverlay();
 
 
   const {
@@ -67,7 +40,7 @@ export default function SelectionWorkspace() {
     handleSelect,
   } = useSelection({
     submitTask,
-    onClearSelectedStock: clearSelectedStock,
+    onClearSelectedStock: closeKline,
   });
 
   // 从策略库进入选股工作台时，读取一次待恢复的策略并清理会话标记。
@@ -105,14 +78,9 @@ export default function SelectionWorkspace() {
     if (!user || typeof window === 'undefined') return;
     const codeParam = new URLSearchParams(window.location.search).get('code');
     if (!codeParam) return;
-    if (stockList.length === 0) return;
     router.replace('/select', { scroll: false });
-    void viewStock(decodeURIComponent(codeParam));
-  }, [router, user, stockList.length, viewStock]);
-
-  const handleViewStock = useCallback((code: string) => {
-    void viewStock(code);
-  }, [viewStock]);
+    openKline(decodeURIComponent(codeParam));
+  }, [router, user, openKline]);
 
   const handleSaveStrategy = useCallback(async () => {
     if (!strategyName.trim()) return;
@@ -156,7 +124,7 @@ export default function SelectionWorkspace() {
         <section aria-label="股票搜索" className="bg-white p-4 md:p-6 rounded-2xl border border-slate-200 shadow-sm">
           <div className="flex flex-col gap-3">
             <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">股票搜索</label>
-            <StockSearch stockList={stockList} onSelect={handleViewStock} className="w-full max-w-md" />
+            <StockSearch stockList={stockList} onSelect={openKline} className="w-full max-w-md" />
           </div>
         </section>
         <SelectionControls
@@ -175,39 +143,10 @@ export default function SelectionWorkspace() {
           <SelectionResultsSidebar
             selectMeta={selectMeta}
             results={results}
-            selectedCode={selectedStock?.code}
+            selectedCode={selectedCode}
             stockList={stockList}
-            onViewStock={handleViewStock}
+            onViewStock={openKline}
           />
-          {selectedStock && (
-            <StockResearchPanel
-              selectedStock={selectedStock}
-              stockList={stockList}
-              sectors={sectors}
-              expandedSectors={expandedSectors}
-              chartLoading={chartLoading}
-              chartTimeframe={chartTimeframe}
-              onChangeChartTimeframe={changeChartTimeframe}
-              subChartType={subChartType}
-              onChangeSubChartType={setSubChartType}
-              mainChartType={mainChartType}
-              onChangeMainChartType={setMainChartType}
-              isFullScreen={isFullScreen}
-              chartWrapperRef={chartWrapperRef}
-              adjustMode={adjustMode}
-              adjustMenuOpen={adjustMenuOpen}
-              adjustMenuRef={adjustMenuRef}
-              onChangeAdjustMode={changeAdjustMode}
-              onChangeAdjustMenuOpen={setAdjustMenuOpen}
-              onChangeSectorsExpanded={setExpandedSectors}
-              onViewStock={handleViewStock}
-              onViewSector={viewSector}
-              lastStockRef={lastStockRef}
-              onReturnToStock={returnToStock}
-              onToggleFullscreen={toggleFullscreen}
-              onClose={clearSelectedStock}
-            />
-          )}
         </div>
       </div>
 
