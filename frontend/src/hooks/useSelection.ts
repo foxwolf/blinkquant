@@ -1,11 +1,53 @@
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 type SubmitSelectionTask = (
   taskType: 'selection',
   payload: any
 ) => Promise<number>;
+
+const SELECT_RESULTS_STORAGE_KEY = 'bq-select-results';
+
+interface SavedSelection {
+  results: string[];
+  selectMeta: { date?: string | null; degraded?: boolean } | null;
+}
+
+function loadSavedSelection(): SavedSelection {
+  if (typeof window === 'undefined') {
+    return { results: [], selectMeta: null };
+  }
+  try {
+    const raw = localStorage.getItem(SELECT_RESULTS_STORAGE_KEY);
+    if (!raw) return { results: [], selectMeta: null };
+    const parsed = JSON.parse(raw);
+    return {
+      results: Array.isArray(parsed.results) ? parsed.results : [],
+      selectMeta: parsed.selectMeta ?? null,
+    };
+  } catch {
+    return { results: [], selectMeta: null };
+  }
+}
+
+function persistSelection(results: string[], selectMeta: SavedSelection['selectMeta']) {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(SELECT_RESULTS_STORAGE_KEY, JSON.stringify({ results, selectMeta }));
+  } catch {
+    // ignore quota/private-mode errors
+  }
+}
+
+function clearPersistedSelection() {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.removeItem(SELECT_RESULTS_STORAGE_KEY);
+  } catch {
+    // ignore
+  }
+}
 
 export interface SelectionStrategySnapshot {
   id: number;
@@ -29,13 +71,19 @@ export default function useSelection({
   const [formula, setFormula] = useState('CLOSE > MA(CLOSE, 20)');
   const [selectDate, setSelectDate] = useState('');
   const [timeframe, setTimeframe] = useState('D');
-  const [results, setResults] = useState<string[]>([]);
+  const saved = loadSavedSelection();
+  const [results, setResults] = useState<string[]>(saved.results);
   const [loading, setLoading] = useState(false);
-  const [selectMeta, setSelectMeta] = useState<{ date?: string | null; degraded?: boolean } | null>(null);
+  const [selectMeta, setSelectMeta] = useState<{ date?: string | null; degraded?: boolean } | null>(saved.selectMeta);
+
+  useEffect(() => {
+    persistSelection(results, selectMeta);
+  }, [results, selectMeta]);
 
   const clearResults = useCallback(() => {
     setResults([]);
     setSelectMeta(null);
+    clearPersistedSelection();
     onClearSelectedStock?.();
   }, [onClearSelectedStock]);
 
