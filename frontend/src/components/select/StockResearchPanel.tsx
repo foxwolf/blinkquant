@@ -81,7 +81,7 @@ export default function StockResearchPanel({
   lastStockRef, onReturnToStock, onToggleFullscreen, onClose
 }: StockResearchPanelProps) {
   return (
-      <section className="fixed inset-x-2 top-16 bottom-2 z-40 lg:left-auto lg:right-4 lg:top-auto lg:bottom-4 lg:w-[min(560px,calc(100vw-2rem))] lg:h-[min(640px,calc(100vh-12rem))] rounded-2xl border border-slate-200 bg-white shadow-lg overflow-hidden">
+      <section className="fixed inset-0 z-40 lg:left-auto lg:right-4 lg:top-auto lg:bottom-4 lg:w-[min(560px,calc(100vw-2rem))] lg:h-[min(640px,calc(100vh-12rem))] rounded-2xl border border-slate-200 bg-white shadow-lg overflow-hidden">
             <div ref={chartWrapperRef} className="flex flex-col h-full w-full">
               <div className="relative px-4 py-3 pr-36 border-b flex flex-wrap justify-between items-center gap-2 bg-white z-10 shrink-0">
                 <StockSearch stockList={stockList} onSelect={onViewStock} />

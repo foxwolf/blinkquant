@@ -175,14 +175,11 @@ export default function KLineChart({
   // 根据屏幕宽度设置 Y 轴可见性 - 定义为组件级回调
   const updateYAxisVisibility = useCallback(() => {
     if (isUnmounted.current || !chartRefCleanup.current) return;
-    const mobile = window.innerWidth < 768;
-    setIsMobile(mobile);
     try {
-      chartRefCleanup.current.priceScale('right').applyOptions({ visible: !mobile });
-      chartRefCleanup.current.priceScale('volume').applyOptions({ visible: !mobile });
-      chartRefCleanup.current.priceScale('subchart').applyOptions({ visible: !mobile });
+      chartRefCleanup.current.priceScale('right').applyOptions({ visible: true });
+      chartRefCleanup.current.priceScale('volume').applyOptions({ visible: true });
+      chartRefCleanup.current.priceScale('subchart').applyOptions({ visible: true });
     } catch (e) {
-      // 图表可能已被销毁，忽略错误
       console.warn('YAxis visibility update failed:', e);
     }
   }, []);
