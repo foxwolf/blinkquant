@@ -36,7 +36,7 @@
 
 - 内部持有**唯一** `useStockResearch()` 实例；挂载后即按现有缓存逻辑预热 `stockList`。
 - 状态 `pendingCode`：`stockList` 未就绪时暂存待开代码，就绪 effect 消费（自动触发一次后清空）。
-- 渲染：`{selectedStock && <StockResearchPanel … />}`，全量透传 hook 输出，接线与现 workspace 一致：
+- 渲染：`{openPathRef.current === pathname && selectedStock && <StockResearchPanel … />}`（路由归属守卫：open 时记录 `openPathRef=path`，`closeKline` 置空；归属不符则不同步渲染，防迟到 fetch 在关闭/换页后复活浮窗），全量透传 hook 输出，接线与现 workspace 一致：
   `onClose=clearSelectedStock`、`onViewStock=（包 viewStock）`、`onViewSector=viewSector`、`onToggleFullscreen=toggleFullscreen`、`onReturnToStock=returnToStock`、`onChangeAdjustMode/onChangeAdjustMenuOpen/onChangeSectorsExpanded` 及图表状态各 setter。
 - Context API（`useKlineOverlay()`）：
   - `openKline(code: string)`：stockList 空则写入 `pendingCode`，否则 `viewStock(code)`；
@@ -61,7 +61,7 @@
 
 ### 3.3 生命周期与边角
 
-- **换页即关**：Provider 内 `usePathname()` effect，路径变化时执行统一清理（`closeKline`），全屏态先 `document.exitFullscreen()` 兜底，防跨页残留全屏。
+- **换页即关**：Provider 内 `usePathname()` effect，仅当 `openPathRef` 非空且归属旧路径时执行统一清理（`closeKline`——置空 `openPathRef`、清 `pendingCode`、`clearSelectedStock`、退出全屏）；归属判断使深链「子 effect 先开、父 effect 后判」的时序不再依赖运气。另有迟到落地守卫 effect：`selectedStock` 非空但归属不符时立即 `clearSelectedStock()`，兜底丢弃关闭/换页后才落地的图表状态（与同步渲染守卫互补，后者防闪现）。
 - **open 排队**：预热完成前的任意 `openKline` 调用（含深链）暂存于 `pendingCode`，就绪后自动打开。
 - **同码重开**：关闭后再次点同一股票必须重开。`viewStock` 是否对同码短路需在实施时实测：若短路，`openKline` 对与 `selectedCode` 相同或浮窗已关闭的情形先执行 `clearSelectedStock()` 再 `viewStock(code)`；若不短路则直调即可。实测结论与最终手段写入实施计划。
 - **互斥**：全局单实例，物理上不可能出现双窗。
@@ -83,7 +83,7 @@
 ## 5. 门禁与测试
 
 - **门禁（刻意且唯一的断言行变更）**：`check-ia4-routes.mjs:79` 现断言 workspace 含 `{selectedStock && `。改为：
-  - `KlineOverlayProvider` 源码含 `/\{selectedStock && /`（按需挂载语义不变）；
+  - `KlineOverlayProvider` 源码含 `/openPathRef.current === pathname && selectedStock && /`（按需挂载 + 路由归属守卫语义）；
   - workspace 源码含 `openKline`（防回退私有实例）。
   - `:81-82` 面板 `/onClose/` 断言不变；PASS 文案 `floating K-line card (on-demand mount + close wiring)` 与 21 路由断言全部不动。
 - **测试**：实施第一步 grep `frontend/tests` 对 workspace 的既有断言（已知 IA5.4.3 负断言 `refreshWatchlist|toggleWatchlist|sidebarTab` 不受影响）；如存在锁定面板挂载位置/deep-link `viewStock` 实现的用例，同步更新并在计划中如实记录为「架构迁移导致的刻意测试变更」。
