@@ -3,6 +3,7 @@
 import { useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import AppShell from '@/components/app/AppShell';
+import KlineOverlayProvider from '@/components/kline/KlineOverlayProvider';
 import { SessionProvider, useSession } from '@/lib/session-context';
 
 function AppChrome({ children, onLogout }: { children: React.ReactNode; onLogout: () => void }) {
@@ -12,7 +13,7 @@ function AppChrome({ children, onLogout }: { children: React.ReactNode; onLogout
   }
   return (
     <AppShell user={user} onLogout={onLogout}>
-      {children}
+      <KlineOverlayProvider>{children}</KlineOverlayProvider>
     </AppShell>
   );
 }

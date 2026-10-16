@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import StockSearch from '@/components/StockSearch';
 import Watchlist from '@/components/Watchlist';
+import { useKlineOverlay } from '@/components/kline/KlineOverlayProvider';
 import { useSession } from '@/lib/session-context';
 
 interface StockItem { code: string; name: string }
@@ -17,6 +18,7 @@ export default function WatchlistDetailPage() {
   const params = useParams<{ watchlistId: string }>();
   const router = useRouter();
   const { user } = useSession();
+  const { openKline } = useKlineOverlay();
   const watchlistId = Array.isArray(params?.watchlistId) ? params.watchlistId[0] : params?.watchlistId;
   const [watchlist, setWatchlist] = useState<WatchlistDetail | null>(null);
   const [stockList, setStockList] = useState<StockItem[]>([]);
@@ -121,7 +123,7 @@ export default function WatchlistDetailPage() {
                <div className="text-xs text-slate-400">点击股票查看研究 · × 可移除</div>
              </div>
              <div className="max-h-[65vh] overflow-y-auto custom-scrollbar">
-               <Watchlist codes={watchlist.codes} onSelect={(code) => router.push(`/stocks/${encodeURIComponent(code)}`)} onRemove={(code) => void removeCode(code)} stockList={stockList} />
+               <Watchlist codes={watchlist.codes} onSelect={openKline} onRemove={(code) => void removeCode(code)} stockList={stockList} />
              </div>
            </section> : null}
 

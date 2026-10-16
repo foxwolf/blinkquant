@@ -7,6 +7,7 @@ import type { Task } from '@/hooks/useCluster';
 import { useSession } from '@/lib/session-context';
 import ArtifactDataViewer from '@/components/artifacts/ArtifactDataViewer';
 import SignalTracePanel from '@/components/artifacts/SignalTracePanel';
+import { useKlineOverlay } from '@/components/kline/KlineOverlayProvider';
 
 const STATUS_LABELS: Record<string, string> = {
   done: '完成', failed: '失败', cancelled: '已取消', preempted: '被抢占',
@@ -24,6 +25,7 @@ export default function ArtifactDetailPage({ kind }: { kind: 'selection' | 'back
   const params = useParams<{ artifactId: string }>();
   const router = useRouter();
   const { user } = useSession();
+  const { openKline } = useKlineOverlay();
   const [task, setTask] = useState<Task | null>(null);
   const [loading, setLoading] = useState(true);
   const [watchlists, setWatchlists] = useState<Array<{ id: number; name: string; item_count: number }>>([]);
@@ -219,7 +221,7 @@ export default function ArtifactDetailPage({ kind }: { kind: 'selection' | 'back
                         </div>
                         <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2">
                           {selectionCodes.slice(0, 300).map((code: string) => (
-                            <Link key={code} href={'/stocks/' + encodeURIComponent(String(code))} className="px-3 py-2 rounded-lg border border-slate-100 bg-slate-50 text-xs font-mono text-slate-700 hover:border-blue-200 hover:text-blue-600 text-center">{String(code)}</Link>
+                            <button key={code} type="button" onClick={() => openKline(String(code))} className="px-3 py-2 rounded-lg border border-slate-100 bg-slate-50 text-xs font-mono text-slate-700 hover:border-blue-200 hover:text-blue-600 text-center">{String(code)}</button>
                           ))}
                         </div>
                       </div>

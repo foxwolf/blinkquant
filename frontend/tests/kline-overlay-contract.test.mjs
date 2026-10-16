@@ -19,3 +19,14 @@ test('kline overlay provider owns the single on-demand chart panel instance', ()
   assert.match(provider, /<StockResearchPanel/);
   assert.match(provider, /onClose=\{closeKline\}/);
 });
+
+test('kline overlay is mounted app-wide and wired into non-select entry points', () => {
+  const layout = read('src/app/(app)/layout.tsx');
+  assert.match(layout, /<KlineOverlayProvider>/);
+  const watchlist = read('src/app/(app)/watchlists/[watchlistId]/page.tsx');
+  assert.match(watchlist, /onSelect=\{openKline\}/);
+  assert.doesNotMatch(watchlist, /\/stocks\//);
+  const artifact = read('src/components/artifacts/ArtifactDetailPage.tsx');
+  assert.match(artifact, /onClick=\{\(\) => openKline\(/);
+  assert.doesNotMatch(artifact, /href=\{'\/stocks\//);
+});
