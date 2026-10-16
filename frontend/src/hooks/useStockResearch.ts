@@ -169,7 +169,7 @@ export default function useStockResearch() {
 
   useEffect(() => {
     const loadStockList = async () => {
-      const CACHE_KEY = 'stockListCache_v2';
+      const CACHE_KEY = 'stockListCache_v3';
       const CACHE_EXPIRY_MS = 24 * 60 * 60 * 1000;
       const cachedStr = localStorage.getItem(CACHE_KEY);
 
@@ -189,7 +189,7 @@ export default function useStockResearch() {
       }
 
       try {
-        const res = await fetch('/api/stock-list?v=2');
+        const res = await fetch('/api/stock-list?v=3');
         if (!res.ok) throw new Error('Failed to load stock list');
 
         const data = await res.json();
