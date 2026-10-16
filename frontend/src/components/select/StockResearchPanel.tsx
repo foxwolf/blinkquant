@@ -83,24 +83,26 @@ export default function StockResearchPanel({
   return (
       <section className="fixed inset-0 z-40 lg:left-auto lg:right-4 lg:top-auto lg:bottom-4 lg:w-[min(560px,calc(100vw-2rem))] lg:h-[min(640px,calc(100vh-12rem))] rounded-2xl border border-slate-200 bg-white shadow-lg overflow-hidden">
             <div ref={chartWrapperRef} className="flex flex-col h-full w-full">
-              <div className="relative px-4 py-3 pr-36 border-b flex flex-wrap justify-between items-center gap-2 bg-white z-10 shrink-0">
-                <StockSearch stockList={stockList} onSelect={onViewStock} />
-                <div className="absolute right-3 top-2.5 z-20 flex items-center gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => { void onToggleFullscreen(); }}
-                    className="px-3 py-1 text-xs font-bold text-slate-600 border border-slate-200 bg-white rounded-md hover:bg-slate-100 transition-colors"
-                  >
-                    {isFullScreen ? '退出全屏' : '全屏'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={onClose}
-                    aria-label="关闭K线图"
-                    className="px-3 py-1 text-xs font-bold text-slate-600 border border-slate-200 bg-white rounded-md hover:text-red-600 hover:border-red-200 hover:bg-red-50 transition-colors"
-                  >
-                    ✕
-                  </button>
+              <div className="relative px-4 py-3 border-b bg-white z-10 shrink-0">
+                <div className="flex items-center justify-between gap-2">
+                  <StockSearch stockList={stockList} onSelect={onViewStock} />
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => { void onToggleFullscreen(); }}
+                      className="px-3 py-1 text-xs font-bold text-slate-600 border border-slate-200 bg-white rounded-md hover:bg-slate-100 transition-colors"
+                    >
+                      {isFullScreen ? '退出全屏' : '全屏'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={onClose}
+                      aria-label="关闭K线图"
+                      className="px-3 py-1 text-xs font-bold text-slate-600 border border-slate-200 bg-white rounded-md hover:text-red-600 hover:border-red-200 hover:bg-red-50 transition-colors"
+                    >
+                      ✕
+                    </button>
+                  </div>
                 </div>
                 {selectedStock && (
                   <>
