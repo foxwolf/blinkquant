@@ -42,6 +42,7 @@
   - `openKline(code: string)`：stockList 空则写入 `pendingCode`，否则 `viewStock(code)`；
   - `closeKline()`：`clearSelectedStock()` + 若 `isFullScreen` 则退出全屏（统一清理函数）；
   - `selectedCode`：`selectedStock?.code ?? null`（供选股页侧栏高亮）；
+  - `stockList`：Provider 预热的股票列表（供选股页顶部搜索与结果侧栏名称解析——workspace 统一后不再自有该数据）；
   - `ready`：stockList 就绪布尔（可选暴露）。
 - 挂载点：`frontend/src/app/(app)/layout.tsx` 内、MainNav 之下包裹 children；`login/register/admin` 在 `(app)` 组外，不挂载。
 
@@ -54,7 +55,7 @@
 3. **选股页 workspace** `frontend/src/components/select/SelectionWorkspace.tsx`：
    - 删除：`useStockResearch()` 解构块、`{selectedStock && <StockResearchPanel …/>}` 整块、`handleViewStock` 包装；
    - 新增：`const { openKline, closeKline, selectedCode } = useKlineOverlay()`；
-   - 接线替换：顶部 `StockSearch onSelect` → `openKline`；侧栏 `selectedCode={selectedCode}`、`onViewStock={openKline}`；`useSelection({ onClearSelectedStock: closeKline })`；
+   - 接线替换：顶部 `StockSearch onSelect → openKline` 与 `stockList` 均取自 context；侧栏 `selectedCode={selectedCode}`、`stockList={stockList}`、`onViewStock={openKline}`；`useSelection({ onClearSelectedStock: closeKline })`；
    - 深链 effect 保留（`?code=` 读取 + `router.replace('/select', { scroll: false })`），动作改 `openKline(code)`，移除 `stockList.length` 依赖（排队守卫在 Provider 内）。
 4. **不动**：`StockResearchPanel`/`KLineChart`/`useStockResearch` 本体；`/stocks/[symbol]`、`/stocks`、`/` 桩；浮窗内搜索/切股/切板块（同一实例内自然工作）。
 
