@@ -94,5 +94,5 @@ export async function resolveLlmConfig(): Promise<ResolvedLlmConfig | null> {
   } catch (e) {
     console.warn('[llmConfig] 读取启用配置失败，回退环境变量:', e);
   }
-  return resolveEnvConfig(process.env);
+  return resolveEnvConfig(process.env as EnvLike);
 }
