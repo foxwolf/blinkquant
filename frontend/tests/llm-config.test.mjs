@@ -90,3 +90,66 @@ test('llmCrypto 源文件存在且导出三个函数', () => {
   assert.match(src, /export function decryptApiKey/);
   assert.match(src, /export function maskApiKey/);
 });
+
+// ---- 复制 src/lib/llmConfig.ts 的纯函数 ----
+const LLM_TIMEOUT_DEFAULT_MS = 50000;
+const LLM_TIMEOUT_CAP_MS = 55000;
+const DEFAULT_MAX_TOKENS = 1024;
+
+function clampTimeoutMs(v) {
+  if (!Number.isFinite(v) || v < 1000) return LLM_TIMEOUT_DEFAULT_MS;
+  return Math.min(Math.floor(v), LLM_TIMEOUT_CAP_MS);
+}
+function parseMaxTokens(v) {
+  if (v === null || v === undefined || !Number.isFinite(Number(v)) || Number(v) <= 0) return DEFAULT_MAX_TOKENS;
+  return Math.floor(Number(v));
+}
+function parseTemplateKwargs(raw) {
+  if (raw === null || raw === undefined || raw === '') return undefined;
+  if (typeof raw === 'object') return raw;
+  try {
+    const p = JSON.parse(String(raw));
+    return p && typeof p === 'object' ? p : undefined;
+  } catch {
+    return undefined;
+  }
+}
+function isNemotronModel(model) {
+  return /nemotron|lightning/i.test(model || '');
+}
+
+test('超时钳制：下限 1s、上限 55s、非法回落默认', () => {
+  assert.equal(clampTimeoutMs(50_000), 50_000);
+  assert.equal(clampTimeoutMs(100_000), 55_000);
+  assert.equal(clampTimeoutMs(500), 50_000);
+  assert.equal(clampTimeoutMs(NaN), 50_000);
+});
+
+test('maxTokens 解析：非法回落默认', () => {
+  assert.equal(parseMaxTokens(2048), 2048);
+  assert.equal(parseMaxTokens(0), 1024);
+  assert.equal(parseMaxTokens(undefined), 1024);
+});
+
+test('templateKwargs 解析：对象/JSON 字符串/非法', () => {
+  assert.deepEqual(parseTemplateKwargs('{"enable_thinking":false}'), { enable_thinking: false });
+  assert.deepEqual(parseTemplateKwargs({ a: 1 }), { a: 1 });
+  assert.equal(parseTemplateKwargs('not json'), undefined);
+  assert.equal(parseTemplateKwargs(''), undefined);
+});
+
+test('isNemotronModel 按模型名判定', () => {
+  assert.equal(isNemotronModel('nvidia/nemotron-3-ultra-550b-a55b'), true);
+  assert.equal(isNemotronModel('nemotron-3.5-lightning'), true);
+  assert.equal(isNemotronModel('openai/gpt-oss-120b'), false);
+  assert.equal(isNemotronModel(''), false);
+});
+
+test('llmConfig 契约：库优先/env 兜底', () => {
+  const src = read('../src/lib/llmConfig.ts');
+  assert.match(src, /export async function resolveLlmConfig/);
+  assert.match(src, /FROM llm_configs WHERE is_active = TRUE/);
+  assert.match(src, /source: 'db'/);
+  assert.match(src, /source: 'env'/);
+  assert.match(src, /export function resolveEnvConfig/);
+});
