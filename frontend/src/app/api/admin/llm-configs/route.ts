@@ -6,7 +6,6 @@ import {
   clampTimeoutMs,
   parseMaxTokens,
   DEFAULT_REASONING_EFFORT,
-  DEFAULT_MAX_TOKENS,
 } from '@/lib/llmConfig';
 
 export const runtime = 'nodejs';
