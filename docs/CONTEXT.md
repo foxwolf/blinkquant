@@ -1,7 +1,7 @@
 # BlinkQuant 会话交接说明
 
 > 用途：跨会话保持连续性。新会话开始前先读本文件 + `docs/v2.0-data-migration-plan.md` + `docs/Parquet文件规格说明书.txt`。
-> 最后更新：v2.3 Final Review 收尾阶段，main @ `5b76d4c`；IA5.10 及 v2.3 安全/一致性修复已完成并通过 CI/生产回归。
+> 最后更新：v2.4 管理端大模型设置（多套配置/可切换，见 §10）已上线，main @ `a2540f4`；v2.3 及 IA5.10 修复此前已完成并通过 CI/生产回归。
 
 ## 1. 项目架构（现状）
 
@@ -31,7 +31,7 @@
 
 ## 4. Git 状态
 
-- main @ `5b76d4c`（当前 v2.3 Final Review 收尾版本），最近一次后端修复已完成全部核心 CI 与生产 E2E；工作树由 GitHub 主线管理。
+- main @ `a2540f4`（v2.4 管理端大模型设置已上线），v2.3 Final Review 与 IA5.10 修复此前已完成全部核心 CI 与生产 E2E；工作树由 GitHub 主线管理。
 - `feature/v2-data-migration` 分支已删（本地+远端）。
 
 ## 5. 环境注意事项
@@ -143,3 +143,25 @@
 ### 明确延期项
 - **Node1 重启后的 SQLite 持久化专项复测**：按产品推进节奏暂缓，后续单独安排；当前不作为 v2.3 Final Review 阻塞项。
 - 其他未来增强（如多实例集中式注册限流、密码/邮箱自助修改、容量扩展）均属于后续产品能力，不应与本轮 v2.3 收尾混为一谈。
+
+## 10. 管理端大模型设置 (v2.4，已实现)
+
+### 架构要点
+- **多套配置、单套启用**：Vercel Postgres 表 `llm_configs`（建表见 `frontend/scripts/init_db.sql`，增量迁移见 `frontend/scripts/migrate_llm_configs.sql`），部分唯一索引 `idx_llm_configs_one_active ON (is_active) WHERE is_active = TRUE` 保证任意时刻最多一条启用。
+- **密钥加密存储**：`frontend/src/lib/llmCrypto.ts`，AES-256-GCM，密钥 = SHA-256(`AUTH_SECRET`)，密文布局 `base64(iv(12) || tag(16) || ciphertext)`；列表 GET 只返回掩码 `apiKeyHint`（前 3 + 后 4，如 `nva…xPpx`），任何 GET 响应都不含密文/明文。
+- **按请求解析配置**：`frontend/src/lib/llmConfig.ts` 的 `resolveLlmConfig()` 每次调用现查 `SELECT … FROM llm_configs WHERE is_active = TRUE`——库有启用行且 `AUTH_SECRET` 存在 → 解密返回（`source:'db'`）；否则回退环境变量（`source:'env'`）；都没有 → null（路由返回 503 `NOT_CONFIGURED`）。**不做长缓存**，切换立即生效、多实例一致。
+- **调用链改造**：`frontend/src/lib/selectNLServer.ts` 的 `callLlm(cfg: ResolvedLlmConfig, systemPrompt, query)` 由模块级 `LLM_*` 常量改为接收配置对象；`/api/select-nl` 与 `/api/select-nl/analyze` 两路由先 `await resolveLlmConfig()`，返回 null 则 503。
+- **管理接口**（均 `requireAdmin` + `runtime='nodejs'`）：`/api/admin/llm-configs`（GET 列表 + `activeSource`/`envConfigured`；POST 新建，默认 `is_active=false`）、`/api/admin/llm-configs/[id]`（PATCH 局部更新，`apiKey` 留空=不改；DELETE）、`/api/admin/llm-configs/[id]/activate`（事务内先清空全部 `is_active=FALSE` 再置目标，与部分唯一索引双保险）、`/api/admin/llm-configs/test`（用 `{id}` 取库中 Key，或未保存的 `{endpoint,model,apiKey,…}` 构造，短超时约 15s，返回 `{ok,latencyMs}`/`{ok:false,error}`；**不落库**）。
+- **管理 UI**：`frontend/src/components/admin/LlmSettingsPanel.tsx`，接入 `frontend/src/app/(app)/admin/page.tsx` 的「大模型设置」Tab（「用户管理」Tab 内容保持不变）。key 掩码只在列表显示，编辑时 Key 留空表示不修改。
+
+### 注意事项
+- **`LLM_ENDPOINT` 必须填完整 chat/completions URL**（如 `https://integrate.api.nvidia.com/v1/chat/completions`），不是 base URL；填成 `…/v1` 会 404。
+- **服务端必须配置 `AUTH_SECRET`**，否则无法加密保存（返回 500）。
+- **Nemotron 类模型（模型名命中 `/nemotron|lightning/i`）**：`callLlm` 只发 `chat_template_kwargs`、不发 `reasoning_effort`；若开启思考会使推理过程混入 `content` 导致 JSON 解析失败，需在配置的 `template_kwargs` 填 `{"enable_thinking": false}`（env 路径的 `LLM_TEMPLATE_KWARGS` 默认即此值，库路径留空则不发）。
+- **部署步骤**：生产库执行一次 `frontend/scripts/migrate_llm_configs.sql`——**Vercel 查询编辑器不支持一次执行多条语句**，需把 `CREATE TABLE` 与 `CREATE INDEX` 分两次执行；前端推 `main` 触发 Vercel 部署，**后端不涉及**。
+- 启用 DB 配置后即覆盖 env；删除当前启用配置会回退 env / 未配置。
+- 环境变量 `LLM_MODEL` 原值 `nvidia/nemotron-3-ultra-550b-a55b` 已被 NVIDIA 下架，回退 env 前需把 `LLM_MODEL` / `LLM_API_KEY` 更新到可用模型与 Key。
+
+### 测试与 CI
+- `frontend/tests/llm-config.test.mjs`（`node:test`，17 例）：schema 契约 + DDL drift 守卫、加密/解密/掩码、纯函数解析、`resolveLlmConfig` 优先级、路由契约。
+- `.github/workflows/frontend-ci.yml` 已加入 `AI stock select LLM config regression`（`node tests/llm-config.test.mjs`）步骤。
