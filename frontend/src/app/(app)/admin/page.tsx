@@ -114,8 +114,8 @@ export default function AdminPage() {
       <div className="max-w-5xl mx-auto space-y-6">
         <header className="flex justify-between items-center">
           <div>
-            <h1 className="text-2xl font-black bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">用户管理</h1>
-            <p className="text-slate-500 text-sm mt-1">共 {total} 个用户</p>
+            <h1 className="text-2xl font-black bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">{tab === 'users' ? '用户管理' : '大模型设置'}</h1>
+            <p className="text-slate-500 text-sm mt-1">{tab === 'users' ? `共 ${total} 个用户` : '管理 AI 选股使用的模型配置'}</p>
           </div>
           <Link href="/" className="text-sm text-blue-600 hover:underline">← 返回首页</Link>
         </header>

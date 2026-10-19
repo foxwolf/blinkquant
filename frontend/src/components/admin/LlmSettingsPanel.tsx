@@ -20,16 +20,16 @@ const EMPTY_FORM = {
   endpoint: '',
   model: '',
   apiKey: '',
-  timeoutMs: 50000,
+  apiKeyHint: '',
+  timeoutMs: '50000',
   reasoningEffort: 'low',
-  maxTokens: 1024,
+  maxTokens: '1024',
   templateKwargs: '',
 };
 
 export default function LlmSettingsPanel() {
   const [configs, setConfigs] = useState<LlmConfig[]>([]);
   const [activeSource, setActiveSource] = useState<'db' | 'env' | 'none'>('none');
-  const [envConfigured, setEnvConfigured] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -37,6 +37,7 @@ export default function LlmSettingsPanel() {
   const [advanced, setAdvanced] = useState(false);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState('');
+  const [msgKind, setMsgKind] = useState<'info' | 'error'>('info');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -50,7 +51,6 @@ export default function LlmSettingsPanel() {
       }
       setConfigs(json.configs || []);
       setActiveSource(json.activeSource || 'none');
-      setEnvConfigured(!!json.envConfigured);
     } catch {
       setError('网络错误');
     } finally {
@@ -76,9 +76,10 @@ export default function LlmSettingsPanel() {
       endpoint: c.endpoint,
       model: c.model,
       apiKey: '',
-      timeoutMs: c.timeoutMs,
+      apiKeyHint: c.apiKeyHint,
+      timeoutMs: String(c.timeoutMs),
       reasoningEffort: c.reasoningEffort,
-      maxTokens: c.maxTokens,
+      maxTokens: String(c.maxTokens),
       templateKwargs: c.templateKwargs || '',
     });
     setAdvanced(false);
@@ -95,13 +96,20 @@ export default function LlmSettingsPanel() {
     setMsg('');
     try {
       const isNew = editingId === 'new';
+      const timeoutMs = Number(form.timeoutMs);
+      const maxTokens = Number(form.maxTokens);
+      if (!Number.isFinite(timeoutMs) || timeoutMs <= 0 || !Number.isFinite(maxTokens) || maxTokens <= 0) {
+        setMsg('超时与 max tokens 必须为正整数');
+        setMsgKind('error');
+        return;
+      }
       const payload: any = {
         name: form.name,
         endpoint: form.endpoint,
         model: form.model,
-        timeoutMs: Number(form.timeoutMs),
+        timeoutMs,
         reasoningEffort: form.reasoningEffort,
-        maxTokens: Number(form.maxTokens),
+        maxTokens,
         templateKwargs: form.templateKwargs || '',
       };
       if (form.apiKey) payload.apiKey = form.apiKey;
@@ -113,12 +121,15 @@ export default function LlmSettingsPanel() {
       const json = await res.json();
       if (!res.ok) {
         setMsg(json.error || '保存失败');
+        setMsgKind('error');
         return;
       }
       setEditingId(null);
+      setMsgKind('info');
       await load();
     } catch {
       setMsg('网络错误');
+      setMsgKind('error');
     } finally {
       setBusy(false);
     }
@@ -132,11 +143,14 @@ export default function LlmSettingsPanel() {
       const json = await res.json();
       if (!res.ok) {
         setMsg(json.error || '启用失败');
+        setMsgKind('error');
         return;
       }
+      setMsgKind('info');
       await load();
     } catch {
       setMsg('网络错误');
+      setMsgKind('error');
     } finally {
       setBusy(false);
     }
@@ -151,11 +165,15 @@ export default function LlmSettingsPanel() {
       const json = await res.json();
       if (!res.ok) {
         setMsg(json.error || '删除失败');
+        setMsgKind('error');
         return;
       }
+      if (editingId === c.id) setEditingId(null);
+      setMsgKind('info');
       await load();
     } catch {
       setMsg('网络错误');
+      setMsgKind('error');
     } finally {
       setBusy(false);
     }
@@ -171,10 +189,16 @@ export default function LlmSettingsPanel() {
         body: JSON.stringify({ id: c.id }),
       });
       const json = await res.json();
-      if (json.ok) setMsg(`「${c.name}」连接成功 · ${json.latencyMs}ms`);
-      else setMsg(`「${c.name}」连接失败：${json.error || '未知错误'}`);
+      if (json.ok) {
+        setMsg(`「${c.name}」连接成功 · ${json.latencyMs}ms`);
+        setMsgKind('info');
+      } else {
+        setMsg(`「${c.name}」连接失败：${json.error || '未知错误'}`);
+        setMsgKind('error');
+      }
     } catch {
       setMsg('测试请求失败');
+      setMsgKind('error');
     } finally {
       setBusy(false);
     }
@@ -200,12 +224,17 @@ export default function LlmSettingsPanel() {
       </div>
 
       {error && <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-3 py-2">{error}</div>}
-      {msg && <div className="text-sm text-slate-700 bg-blue-50 border border-blue-200 rounded-xl px-3 py-2">{msg}</div>}
+      {msg && (
+        <div className={`text-sm rounded-xl px-3 py-2 border ${msgKind === 'error' ? 'text-red-600 bg-red-50 border-red-200' : 'text-slate-700 bg-blue-50 border-blue-200'}`}>
+          {msg}
+        </div>
+      )}
 
       <div className="flex justify-end">
         <button
           onClick={startNew}
-          className="bg-blue-600 text-white text-sm px-4 py-2 rounded-xl hover:bg-blue-700"
+          disabled={busy}
+          className="bg-blue-600 text-white text-sm px-4 py-2 rounded-xl hover:bg-blue-700 disabled:opacity-40"
         >
           + 新建配置
         </button>
@@ -213,7 +242,7 @@ export default function LlmSettingsPanel() {
 
       {loading ? (
         <div className="text-sm text-slate-400 py-6 text-center">加载中...</div>
-      ) : configs.length === 0 ? (
+      ) : configs.length === 0 && !error ? (
         <div className="text-sm text-slate-400 py-6 text-center">暂无配置</div>
       ) : (
         <div className="space-y-2">
@@ -258,7 +287,8 @@ export default function LlmSettingsPanel() {
                   <div className="flex gap-2">
                     <button
                       onClick={() => startEdit(c)}
-                      className="text-xs text-blue-500 border border-blue-200 hover:bg-blue-50 rounded-lg px-2.5 py-1"
+                      disabled={busy}
+                      className="text-xs text-blue-500 border border-blue-200 hover:bg-blue-50 rounded-lg px-2.5 py-1 disabled:opacity-40"
                     >
                       编辑
                     </button>
@@ -316,7 +346,7 @@ export default function LlmSettingsPanel() {
               type="password"
               value={form.apiKey}
               onChange={(e) => setForm({ ...form, apiKey: e.target.value })}
-              placeholder={editingId !== 'new' ? '••••（不修改）' : 'nvapi-...'}
+              placeholder={editingId !== 'new' ? `${form.apiKeyHint || '••••'}（不修改）` : 'nvapi-...'}
               className="mt-1 w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm font-mono"
             />
           </label>
@@ -332,7 +362,8 @@ export default function LlmSettingsPanel() {
                 <input
                   type="number"
                   value={form.timeoutMs}
-                  onChange={(e) => setForm({ ...form, timeoutMs: Number(e.target.value) })}
+                  onChange={(e) => setForm({ ...form, timeoutMs: e.target.value })}
+                  min="1000" max="55000"
                   className="mt-1 w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm"
                 />
               </label>
@@ -349,7 +380,8 @@ export default function LlmSettingsPanel() {
                 <input
                   type="number"
                   value={form.maxTokens}
-                  onChange={(e) => setForm({ ...form, maxTokens: Number(e.target.value) })}
+                  onChange={(e) => setForm({ ...form, maxTokens: e.target.value })}
+                  min="1"
                   className="mt-1 w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm"
                 />
               </label>
@@ -362,6 +394,12 @@ export default function LlmSettingsPanel() {
                   className="mt-1 w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm font-mono"
                 />
               </label>
+            </div>
+          )}
+
+          {msg && (
+            <div className={`text-sm rounded-xl px-3 py-2 border ${msgKind === 'error' ? 'text-red-600 bg-red-50 border-red-200' : 'text-slate-700 bg-blue-50 border-blue-200'}`}>
+              {msg}
             </div>
           )}
 
