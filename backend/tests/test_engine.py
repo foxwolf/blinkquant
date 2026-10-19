@@ -463,6 +463,23 @@ class TestHotJITWarmUp(unittest.TestCase):
         self.assertIn(col_name, data_manager.df_daily.columns,
                        f"HotJIT should mount {col_name}")
 
+    def test_hotjit_handles_duplicate_metric_reference(self):
+        """公式重复引用同一指标（如多头排列中 MA20 出现两次）不应因重复列名报错。"""
+        rows = []
+        base = datetime.date(2026, 8, 3)
+        for i in range(30):
+            d = base + datetime.timedelta(days=i)
+            rows.append((d, "sh.A", 10 + i))
+        self._load(rows)
+
+        self.assertNotIn("MA_CLOSE_20", data_manager.df_daily.columns)
+
+        # MA20 在公式中出现两次（相当于 "MA10 > MA20 && MA20 > MA60" 的形态）
+        selection_engine._prepare_hot_jit("MA(CLOSE, 20) > MA(CLOSE, 20)")
+
+        self.assertIn("MA_CLOSE_20", data_manager.df_daily.columns,
+                      "HotJIT 必须对重复引用的同一指标去重，避免 duplicate column name")
+
     def test_hotjit_skips_truly_all_null(self):
         """如果表达式确实全 null（无数据），HotJIT 应跳过。"""
         rows = []

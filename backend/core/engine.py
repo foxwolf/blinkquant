@@ -63,9 +63,16 @@ class SelectionEngine:
                 continue
 
             new_exprs = []
+            seen_cols = set()
             for func, field, param in matches:
                 func_name, field_name, p_val = func.upper(), field.upper(), int(param)
                 col_name = f"{func_name}_{field_name}_{p_val}"
+
+                # 同一指标在公式中可能被多次引用（如多头排列 MA10>MA20 且 MA20>MA60），
+                # 必须去重，否则 with_columns 会因重复别名报 duplicate column name。
+                if col_name in seen_cols:
+                    continue
+                seen_cols.add(col_name)
 
                 # 如果该表中没有这一列，则加入计算队列
                 if col_name not in df.columns:
