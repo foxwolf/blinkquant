@@ -169,3 +169,11 @@ test('selectNLServer 契约：callLlm 接收配置对象', () => {
   assert.doesNotMatch(src, /const LLM_ENDPOINT = process\.env/);
   assert.doesNotMatch(src, /function isNemotron\(\)/);
 });
+
+test('管理接口契约：GET 列表不暴露密钥字段', () => {
+  const src = read('../src/app/api/admin/llm-configs/route.ts');
+  assert.match(src, /requireAdmin/);
+  assert.match(src, /export const runtime = 'nodejs'/);
+  assert.doesNotMatch(src, /apiKeyEnc/);
+  assert.doesNotMatch(src, /api_key_enc:/);
+});
