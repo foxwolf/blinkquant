@@ -184,7 +184,7 @@ export default function StockResearchPanel({
       <section className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[90vw] h-[70vh] z-[60] lg:left-auto lg:right-4 lg:top-auto lg:bottom-4 lg:translate-x-0 lg:translate-y-0 lg:w-[min(560px,calc(100vw-2rem))] lg:h-[min(640px,calc(100vh-12rem))] rounded-2xl border border-slate-200 bg-white shadow-lg overflow-hidden">
             <div ref={chartWrapperRef} className="flex flex-col h-full w-full">
             {isFullScreen ? (
-              <div className="relative flex items-center gap-1.5 px-2 py-1 border-b bg-white z-30 shrink-0 whitespace-nowrap">
+              <div className="relative flex items-center gap-1.5 px-2 py-1 border-b bg-white z-30 shrink-0">
                 {selectedStock?.kind === 'stock' && <WatchlistPicker code={selectedStock.code} compact />}
                 {selectedStock?.kind === 'stock' && (
                   <div className="relative" ref={adjustMenuRef}>
