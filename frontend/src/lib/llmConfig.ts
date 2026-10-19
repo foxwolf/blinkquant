@@ -24,8 +24,7 @@ export function isNemotronModel(model: string | null | undefined): boolean {
 }
 
 export function clampTimeoutMs(value: number): number {
-  if (!Number.isFinite(value) || value < 1000) return 50000;
-  return Math.min(Math.floor(value), 55000);
+  return resolveLlmTimeout(Number.isFinite(value) ? String(value) : null);
 }
 
 export function parseMaxTokens(value: number | null | undefined): number {
@@ -37,10 +36,10 @@ export function parseMaxTokens(value: number | null | undefined): number {
 
 export function parseTemplateKwargs(raw: unknown): Record<string, unknown> | undefined {
   if (raw === null || raw === undefined || raw === '') return undefined;
-  if (typeof raw === 'object') return raw as Record<string, unknown>;
+  if (typeof raw === 'object') return Array.isArray(raw) ? undefined : (raw as Record<string, unknown>);
   try {
     const parsed = JSON.parse(String(raw));
-    return parsed && typeof parsed === 'object' ? parsed : undefined;
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : undefined;
   } catch {
     return undefined;
   }
@@ -66,7 +65,7 @@ export function resolveEnvConfig(env: EnvLike): ResolvedLlmConfig | null {
     timeoutMs: resolveLlmTimeout(env.LLM_TIMEOUT_MS),
     reasoningEffort: env.LLM_REASONING_EFFORT || DEFAULT_REASONING_EFFORT,
     maxTokens: parseMaxTokens(env.LLM_MAX_TOKENS ? Number(env.LLM_MAX_TOKENS) : undefined),
-    templateKwargs: parseTemplateKwargs(env.LLM_TEMPLATE_KWARGS ?? DEFAULT_TEMPLATE_KWARGS),
+    templateKwargs: parseTemplateKwargs(env.LLM_TEMPLATE_KWARGS || DEFAULT_TEMPLATE_KWARGS),
     source: 'env',
   };
 }
@@ -90,6 +89,8 @@ export async function resolveLlmConfig(): Promise<ResolvedLlmConfig | null> {
         templateKwargs: parseTemplateKwargs(r.template_kwargs),
         source: 'db',
       };
+    } else if (rows.rows.length > 0 && !secret) {
+      console.warn('[llmConfig] 存在启用配置但缺少 AUTH_SECRET，回退环境变量');
     }
   } catch (e) {
     console.warn('[llmConfig] 读取启用配置失败，回退环境变量:', e);
