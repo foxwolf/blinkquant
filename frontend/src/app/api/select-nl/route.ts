@@ -18,7 +18,8 @@ import {
   type AnalyzeResult,
   type SelectNLResult,
 } from '@/lib/selectNL';
-import { fetchNlMeta, callLlm, rateStore, LLM_ENDPOINT, LLM_API_KEY, LLM_MODEL, NL_TEST_MODE } from '@/lib/selectNLServer';
+import { fetchNlMeta, callLlm, rateStore, NL_TEST_MODE } from '@/lib/selectNLServer';
+import { resolveLlmConfig } from '@/lib/llmConfig';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -31,7 +32,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: '未登录' }, { status: auth.status });
   }
 
-  if (!LLM_ENDPOINT || !LLM_API_KEY || !LLM_MODEL) {
+  const cfg = await resolveLlmConfig();
+  if (!cfg) {
     return NextResponse.json({ error: 'AI 选股未配置', code: 'NOT_CONFIGURED' }, { status: 503 });
   }
 
@@ -81,7 +83,7 @@ export async function POST(req: NextRequest) {
       sys: string,
       user: string
     ): Promise<SelectNLResult | { kind: 'invalid'; reason: string; formula?: string; explanation?: string }> => {
-      const raw = await callLlm(sys, user);
+      const raw = await callLlm(cfg, sys, user);
       let parsed: SelectNLResult;
       try {
         parsed = parseSelectNLText(raw);

@@ -153,3 +153,19 @@ test('llmConfig 契约：库优先/env 兜底', () => {
   assert.match(src, /source: 'env'/);
   assert.match(src, /export function resolveEnvConfig/);
 });
+
+test('select-nl 路由契约：使用 resolveLlmConfig 且不再读 LLM_ 常量', () => {
+  for (const rel of ['../src/app/api/select-nl/route.ts', '../src/app/api/select-nl/analyze/route.ts']) {
+    const src = read(rel);
+    assert.match(src, /resolveLlmConfig/);
+    assert.doesNotMatch(src, /LLM_ENDPOINT/);
+    assert.doesNotMatch(src, /LLM_API_KEY/);
+  }
+});
+
+test('selectNLServer 契约：callLlm 接收配置对象', () => {
+  const src = read('../src/lib/selectNLServer.ts');
+  assert.match(src, /export async function callLlm\(\s*cfg: ResolvedLlmConfig/);
+  assert.doesNotMatch(src, /const LLM_ENDPOINT = process\.env/);
+  assert.doesNotMatch(src, /function isNemotron\(\)/);
+});
