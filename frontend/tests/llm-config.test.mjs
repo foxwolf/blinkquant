@@ -177,3 +177,23 @@ test('管理接口契约：GET 列表不暴露密钥字段', () => {
   assert.doesNotMatch(src, /apiKeyEnc/);
   assert.doesNotMatch(src, /api_key_enc:/);
 });
+
+test('管理接口契约：[id] 支持更新与删除，activate 在事务内切换', () => {
+  const idSrc = read('../src/app/api/admin/llm-configs/[id]/route.ts');
+  assert.match(idSrc, /export async function PATCH/);
+  assert.match(idSrc, /export async function DELETE/);
+  assert.match(idSrc, /apiKey 留空|不修改|typeof body.apiKey/);
+
+  const actSrc = read('../src/app/api/admin/llm-configs/[id]/activate/route.ts');
+  assert.match(actSrc, /sql.connect\(\)/);
+  assert.match(actSrc, /BEGIN/);
+  assert.match(actSrc, /COMMIT/);
+  assert.match(actSrc, /release\(\)/);
+});
+
+test('管理接口契约：test 路由用 callLlm 且短超时', () => {
+  const src = read('../src/app/api/admin/llm-configs/test/route.ts');
+  assert.match(src, /callLlm/);
+  assert.match(src, /latencyMs/);
+  assert.match(src, /requireAdmin/);
+});
