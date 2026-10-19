@@ -236,6 +236,9 @@ export default function StockResearchPanel({
                 {selectedStock && (
                   <span className="ml-[5em] min-w-0 text-xs font-bold text-slate-700 truncate">{selectedStock.name || selectedStock.code}</span>
                 )}
+                {selectedStock?.name && (
+                  <span className="ml-[2em] text-xs font-bold text-slate-500">{selectedStock.code}</span>
+                )}
                 <div className="ml-auto flex items-center gap-1.5 shrink-0">
                   <button
                     type="button"
