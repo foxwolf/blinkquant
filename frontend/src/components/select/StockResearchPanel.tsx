@@ -223,9 +223,6 @@ export default function StockResearchPanel({
                     </button>
                   ))}
                 </div>
-                {selectedStock && (
-                  <span className="min-w-0 text-xs font-bold text-slate-700 truncate">{selectedStock.name || selectedStock.code}</span>
-                )}
                 {selectedStock?.kind === 'stock' && (
                   <button
                     type="button"
@@ -235,6 +232,9 @@ export default function StockResearchPanel({
                   >
                     {fsInfoExpanded ? '收起 ▲' : '展开 ▼'}
                   </button>
+                )}
+                {selectedStock && (
+                  <span className="min-w-0 text-xs font-bold text-slate-700 truncate">{selectedStock.name || selectedStock.code}</span>
                 )}
                 <div className="ml-auto flex items-center gap-1.5 shrink-0">
                   <button
