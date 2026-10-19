@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { downloadFromResponse } from '@/lib/download';
+import LlmSettingsPanel from '@/components/admin/LlmSettingsPanel';
 
 interface AdminUser {
   id: string;
@@ -24,6 +25,7 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [notAdmin, setNotAdmin] = useState(false);
+  const [tab, setTab] = useState<'users' | 'llm'>('users');
 
   const fetchUsers = useCallback(async () => {
     setLoading(true);
@@ -118,6 +120,23 @@ export default function AdminPage() {
           <Link href="/" className="text-sm text-blue-600 hover:underline">← 返回首页</Link>
         </header>
 
+        <div className="flex gap-2 border-b border-slate-200">
+          <button
+            onClick={() => setTab('users')}
+            className={`px-4 py-2 text-sm font-bold -mb-px border-b-2 ${tab === 'users' ? 'border-blue-600 text-blue-700' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
+          >
+            用户管理
+          </button>
+          <button
+            onClick={() => setTab('llm')}
+            className={`px-4 py-2 text-sm font-bold -mb-px border-b-2 ${tab === 'llm' ? 'border-blue-600 text-blue-700' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
+          >
+            大模型设置
+          </button>
+        </div>
+
+        {tab === 'users' && (
+          <>
         {error && <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-3 py-2">{error}</div>}
 
         <div className="flex flex-col sm:flex-row gap-3">
@@ -227,6 +246,9 @@ export default function AdminPage() {
             下一页
           </button>
         </div>
+          </>
+        )}
+        {tab === 'llm' && <LlmSettingsPanel />}
       </div>
     </main>
   );
