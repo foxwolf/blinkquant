@@ -19,6 +19,22 @@ export const DEFAULT_REASONING_EFFORT = 'low';
 export const DEFAULT_MAX_TOKENS = 1024;
 export const DEFAULT_TEMPLATE_KWARGS = '{"enable_thinking": false}';
 
+export function rowToConfig(r: any) {
+  return {
+    id: r.id,
+    name: r.name,
+    endpoint: r.endpoint,
+    model: r.model,
+    apiKeyHint: r.api_key_hint,
+    timeoutMs: r.timeout_ms,
+    reasoningEffort: r.reasoning_effort,
+    maxTokens: r.max_tokens,
+    templateKwargs: r.template_kwargs,
+    isActive: r.is_active,
+    updatedAt: r.updated_at,
+  };
+}
+
 export function isNemotronModel(model: string | null | undefined): boolean {
   return /nemotron|lightning/i.test(model || '');
 }

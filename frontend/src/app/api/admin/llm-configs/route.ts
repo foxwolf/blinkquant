@@ -6,25 +6,10 @@ import {
   clampTimeoutMs,
   parseMaxTokens,
   DEFAULT_REASONING_EFFORT,
+  rowToConfig,
 } from '@/lib/llmConfig';
 
 export const runtime = 'nodejs';
-
-function rowToConfig(r: any) {
-  return {
-    id: r.id,
-    name: r.name,
-    endpoint: r.endpoint,
-    model: r.model,
-    apiKeyHint: r.api_key_hint,
-    timeoutMs: r.timeout_ms,
-    reasoningEffort: r.reasoning_effort,
-    maxTokens: r.max_tokens,
-    templateKwargs: r.template_kwargs,
-    isActive: r.is_active,
-    updatedAt: r.updated_at,
-  };
-}
 
 export async function GET(req: NextRequest) {
   const auth = await requireAdmin(req);

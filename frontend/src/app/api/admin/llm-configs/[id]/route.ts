@@ -2,25 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { sql } from '@/lib/db';
 import { requireAdmin } from '@/lib/auth';
 import { encryptApiKey, maskApiKey } from '@/lib/llmCrypto';
-import { clampTimeoutMs, parseMaxTokens } from '@/lib/llmConfig';
+import { clampTimeoutMs, parseMaxTokens, rowToConfig } from '@/lib/llmConfig';
 
 export const runtime = 'nodejs';
-
-function rowToConfig(r: any) {
-  return {
-    id: r.id,
-    name: r.name,
-    endpoint: r.endpoint,
-    model: r.model,
-    apiKeyHint: r.api_key_hint,
-    timeoutMs: r.timeout_ms,
-    reasoningEffort: r.reasoning_effort,
-    maxTokens: r.max_tokens,
-    templateKwargs: r.template_kwargs,
-    isActive: r.is_active,
-    updatedAt: r.updated_at,
-  };
-}
 
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
   const auth = await requireAdmin(req);

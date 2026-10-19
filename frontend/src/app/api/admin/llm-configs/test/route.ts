@@ -71,6 +71,7 @@ export async function POST(req: NextRequest) {
       sample: String(content).slice(0, 50),
     });
   } catch (e) {
+    console.error('[admin/llm-configs/test] error:', e);
     return NextResponse.json({ ok: false, error: e instanceof Error ? e.message : String(e) });
   }
 }
