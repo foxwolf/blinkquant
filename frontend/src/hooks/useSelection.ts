@@ -57,6 +57,15 @@ export interface SelectionStrategySnapshot {
   timeframe: 'D' | 'W' | 'M';
 }
 
+// 本地时区当天 YYYY-MM-DD（不用 toISOString，避免 UTC 偏移）
+function localTodayStr(): string {
+  if (typeof window === 'undefined') return '';
+  const d = new Date();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${d.getFullYear()}-${m}-${day}`;
+}
+
 interface UseSelectionOptions {
   submitTask: SubmitSelectionTask;
   onClearSelectedStock?: () => void;
@@ -69,7 +78,10 @@ export default function useSelection({
   strategySource,
 }: UseSelectionOptions) {
   const [formula, setFormula] = useState('CLOSE > MA(CLOSE, 20)');
-  const [selectDate, setSelectDate] = useState('');
+  const [selectDate, setSelectDate] = useState<string>(() => localTodayStr());
+  const [strategyName, setStrategyName] = useState('');
+  const [excludeSt, setExcludeSt] = useState(true);
+  const [excludeSuspended, setExcludeSuspended] = useState(true);
   const [timeframe, setTimeframe] = useState('D');
   const saved = loadSavedSelection();
   const [results, setResults] = useState<string[]>(saved.results);
@@ -95,6 +107,13 @@ export default function useSelection({
       const f = overrides?.formula ?? formula;
       const t = overrides?.timeframe ?? timeframe;
       const d = overrides?.date;
+      const nameTrim = strategyName.trim();
+      // 来源快照（策略库进入）优先；否则纯命名快照仅带 name（成果标题/来源行按 name 显示）
+      const snapshot = strategySource
+        ? { selection_strategy_snapshot: strategySource }
+        : nameTrim
+          ? { selection_strategy_snapshot: { name: nameTrim, formula: f, timeframe: t } }
+          : {};
 
       try {
         const taskId = await submitTask(
@@ -103,7 +122,9 @@ export default function useSelection({
             formula: f,
             timeframe: t,
             ...(d ? { date: d } : {}),
-            ...(strategySource ? { selection_strategy_snapshot: strategySource } : {}),
+            exclude_st: excludeSt,
+            exclude_suspended: excludeSuspended,
+            ...snapshot,
           }
         );
 
@@ -158,7 +179,7 @@ export default function useSelection({
         setLoading(false);
       }
     },
-    [clearResults, formula, submitTask, strategySource, timeframe]
+    [clearResults, excludeSt, excludeSuspended, formula, strategyName, strategySource, submitTask, timeframe]
   );
 
   return {
@@ -166,6 +187,12 @@ export default function useSelection({
     setFormula,
     selectDate,
     setSelectDate,
+    strategyName,
+    setStrategyName,
+    excludeSt,
+    setExcludeSt,
+    excludeSuspended,
+    setExcludeSuspended,
     timeframe,
     setTimeframe,
     results,
