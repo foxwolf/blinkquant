@@ -1,4 +1,6 @@
 'use client';
+import { useRef, type ReactNode } from 'react';
+import FormulaFunctionMenu from './FormulaFunctionMenu';
 
 interface SelectionControlsProps {
   formula: string;
@@ -7,6 +9,7 @@ interface SelectionControlsProps {
   excludeSt: boolean;
   excludeSuspended: boolean;
   loading: boolean;
+  strategyPickerSlot?: ReactNode;
   onFormulaChange: (value: string) => void;
   onDateChange: (value: string) => void;
   onStrategyNameChange: (value: string) => void;
@@ -24,6 +27,7 @@ export default function SelectionControls({
   excludeSt,
   excludeSuspended,
   loading,
+  strategyPickerSlot,
   onFormulaChange,
   onDateChange,
   onStrategyNameChange,
@@ -33,6 +37,21 @@ export default function SelectionControls({
   onAISelect,
   onSaveStrategy,
 }: SelectionControlsProps) {
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const insertAtCursor = (text: string) => {
+    const el = textareaRef.current;
+    const start = el ? el.selectionStart : formula.length;
+    const end = el ? el.selectionEnd : formula.length;
+    const next = formula.slice(0, start) + text + formula.slice(end);
+    onFormulaChange(next);
+    requestAnimationFrame(() => {
+      const pos = start + text.length;
+      el?.focus();
+      el?.setSelectionRange(pos, pos);
+    });
+  };
+
   return (
     <section
       aria-label="选股控制"
@@ -50,6 +69,7 @@ export default function SelectionControls({
             onChange={(e) => onStrategyNameChange(e.target.value)}
             maxLength={40}
           />
+          {strategyPickerSlot}
           <button
             type="button"
             onClick={onAISelect}
@@ -60,21 +80,25 @@ export default function SelectionControls({
           </button>
         </div>
 
-        <textarea
-          value={formula}
-          onChange={(e) => onFormulaChange(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
-              e.preventDefault();
-              onRun();
-            }
-          }}
-          rows={3}
-          disabled={loading}
-          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-mono text-sm resize-y focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none disabled:opacity-50"
-          placeholder="例如：CLOSE > MA(CLOSE, 20)　（支持多行，Ctrl+Enter 运行）"
-          aria-label="选股公式"
-        />
+        <div className="relative">
+          <FormulaFunctionMenu onInsert={insertAtCursor} />
+          <textarea
+            ref={textareaRef}
+            value={formula}
+            onChange={(e) => onFormulaChange(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                e.preventDefault();
+                onRun();
+              }
+            }}
+            rows={3}
+            disabled={loading}
+            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 pt-7 pb-2 font-mono text-sm resize-y focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none disabled:opacity-50"
+            placeholder="例如：CLOSE > MA(CLOSE, 20)　（支持多行，Ctrl+Enter 运行）"
+            aria-label="选股公式"
+          />
+        </div>
 
         <div className="flex flex-wrap items-center gap-2">
           <label className="text-xs font-bold text-slate-500">基准日期</label>

@@ -1,8 +1,8 @@
 'use client';
 import { useState, useEffect, useCallback } from 'react';
-import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import AISelectModal from '../AISelectModal';
+import StrategyPicker, { type StrategyOption } from './StrategyPicker';
 import { useCluster } from '@/hooks/useCluster';
 import SelectionControls from './SelectionControls';
 import SelectionResultsSidebar from './SelectionResultsSidebar';
@@ -11,13 +11,10 @@ import { useKlineOverlay } from '@/components/kline/KlineOverlayProvider';
 import useSelection, { type SelectionStrategySnapshot } from '@/hooks/useSelection';
 import { useSession } from '@/lib/session-context';
 
-const StrategyList = dynamic(() => import('../StrategyList'), { ssr: false });
-
 export default function SelectionWorkspace() {
   const router = useRouter();
   const { user } = useSession();
 
-  const [showStrategies, setShowStrategies] = useState(false);
   const [saveStrategyOpen, setSaveStrategyOpen] = useState(false);
   const [showAISelect, setShowAISelect] = useState(false);
   const [selectionStrategySource, setSelectionStrategySource] = useState<SelectionStrategySnapshot | undefined>(undefined);
@@ -115,12 +112,19 @@ export default function SelectionWorkspace() {
     setFormula(nextFormula);
   }, [selectionStrategySource, setFormula]);
 
-  const handleApplyStrategy = useCallback((strategyFormula: string, strategyTimeframe: string) => {
-    setSelectionStrategySource(undefined);
-    setFormula(strategyFormula);
-    setTimeframe(strategyTimeframe);
-    setShowStrategies(false);
-  }, [setFormula, setTimeframe]);
+  const handlePickStrategy = useCallback((s: StrategyOption) => {
+    const tf: 'D' | 'W' | 'M' = s.timeframe === 'W' || s.timeframe === 'M' ? s.timeframe : 'D';
+    setSelectionStrategySource({
+      id: Number(s.id),
+      version_no: Number(s.version_no) || 1,
+      name: String(s.name || ''),
+      formula: String(s.formula).trim(),
+      timeframe: tf,
+    });
+    setFormula(String(s.formula));
+    setTimeframe(tf);
+    setStrategyName(String(s.name || ''));
+  }, [setFormula, setStrategyName, setTimeframe]);
 
   if (!user) return null;
 
@@ -148,6 +152,7 @@ export default function SelectionWorkspace() {
           onRun={() => handleSelect({ date: selectDate || undefined })}
           onAISelect={() => setShowAISelect(true)}
           onSaveStrategy={() => setSaveStrategyOpen(true)}
+          strategyPickerSlot={<StrategyPicker onPick={handlePickStrategy} />}
         />
 
         {/* Results Area */}
@@ -161,13 +166,6 @@ export default function SelectionWorkspace() {
           />
         </div>
       </div>
-
-      {showStrategies && (
-        <StrategyList
-          onApply={handleApplyStrategy}
-          onClose={() => setShowStrategies(false)}
-        />
-      )}
 
       {saveStrategyOpen && (
         <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" onClick={() => setSaveStrategyOpen(false)}>
