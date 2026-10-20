@@ -3,12 +3,21 @@ import { useState, useCallback } from 'react';
 
 interface NlMeta {
   indicators?: string[];
+  signatures?: Record<string, string[]>;
   descriptions?: Record<string, string>;
 }
 
 interface FormulaFunctionMenuProps {
   onInsert: (text: string) => void;
 }
+
+// 参数类型 → 中文标签（与后端 indicator_registry 签名约定一致）
+const ARG_TYPE_LABELS: Record<string, string> = {
+  field: '字段',
+  pos_int: '正整数N',
+  series: '序列',
+  cond: '条件式',
+};
 
 const WINDOW_GROUP = ['MA', 'EMA', 'STD', 'ROC', 'REF', 'HHV', 'LLV', 'SUM'];
 const LOGIC_GROUP = ['CROSS_UP', 'CROSS_DOWN', 'MAX', 'MIN', 'ABS', 'COUNT', 'BARSLAST'];
@@ -98,6 +107,7 @@ export default function FormulaFunctionMenu({ onInsert }: FormulaFunctionMenuPro
 
   const indicators = meta?.indicators || [];
   const descriptions = meta?.descriptions || {};
+  const signatures = meta?.signatures || {};
   const otherGroup = indicators.filter((n) => !WINDOW_GROUP.includes(n) && !LOGIC_GROUP.includes(n));
   const groups: [string, string[]][] = [
     ['均线 / 窗口', WINDOW_GROUP.filter((n) => indicators.includes(n))],
@@ -118,7 +128,7 @@ export default function FormulaFunctionMenu({ onInsert }: FormulaFunctionMenuPro
       {open && (
         <>
           <div className="fixed inset-0 z-30" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 top-full mt-1 w-64 bg-white border border-slate-200 rounded-xl shadow-xl overflow-hidden z-40">
+          <div className="absolute right-0 top-full mt-1 w-72 bg-white border border-slate-200 rounded-xl shadow-xl overflow-hidden z-40">
             <div className="max-h-72 overflow-y-auto">
               {error && <div className="px-3 py-4 text-xs text-red-600">{error}</div>}
               {!error && !meta && <div className="px-3 py-6 text-center text-xs text-slate-400">加载中…</div>}
@@ -130,14 +140,22 @@ export default function FormulaFunctionMenu({ onInsert }: FormulaFunctionMenuPro
                       <button
                         key={n}
                         type="button"
-                        title={descriptions[n] || n}
+                        title={SAMPLE_CALLS[n] || `${n}()`}
                         onClick={() => {
                           setOpen(false);
                           onInsert(SAMPLE_CALLS[n] || `${n}()`);
                         }}
-                        className="w-full text-left px-3 py-1.5 hover:bg-blue-50 text-xs font-mono text-slate-700"
+                        className="w-full text-left px-3 py-1.5 hover:bg-blue-50 border-b border-slate-50 last:border-b-0"
                       >
-                        {n}
+                        <div className="flex items-baseline gap-2">
+                          <span className="text-xs font-mono font-bold text-slate-700">{n}</span>
+                          <span className="text-[10px] font-mono text-slate-400 truncate">
+                            ({(signatures[n] || []).map((t) => ARG_TYPE_LABELS[t] || t).join(', ')})
+                          </span>
+                        </div>
+                        {descriptions[n] && (
+                          <div className="text-[10px] text-slate-500 leading-snug mt-0.5">{descriptions[n]}</div>
+                        )}
                       </button>
                     ))}
                   </div>
