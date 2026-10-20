@@ -38,6 +38,7 @@ export default function SelectionControls({
   onSaveStrategy,
 }: SelectionControlsProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const nameFilled = strategyName.trim() !== '';
 
   const insertAtCursor = (text: string) => {
     const el = textareaRef.current;
@@ -63,17 +64,21 @@ export default function SelectionControls({
             策略公式
           </label>
           <input
-            className="min-w-[180px] max-w-xs flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
-            placeholder="策略名（可选，用于成果库标题）"
+            className={`min-w-[180px] max-w-xs flex-1 bg-slate-50 border rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none ${nameFilled ? 'border-slate-200' : 'border-amber-300'}`}
+            placeholder="策略名（必填，用于成果库标题）"
             value={strategyName}
             onChange={(e) => onStrategyNameChange(e.target.value)}
             maxLength={40}
           />
+          {!nameFilled && (
+            <span className="text-[10px] font-bold text-amber-600 whitespace-nowrap">← 请先填写策略名</span>
+          )}
           {strategyPickerSlot}
           <button
             type="button"
             onClick={onAISelect}
-            disabled={loading}
+            disabled={loading || !nameFilled}
+            title={nameFilled ? undefined : '请先填写策略名'}
             className="ml-auto bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl font-bold disabled:opacity-50"
           >
             AI 选股
@@ -81,15 +86,17 @@ export default function SelectionControls({
         </div>
 
         <div className="relative">
-          <FormulaFunctionMenu onInsert={insertAtCursor} />
+          <FormulaFunctionMenu onInsert={insertAtCursor} disabled={!nameFilled} />
           <textarea
             ref={textareaRef}
             value={formula}
+            readOnly={!nameFilled}
+            title={nameFilled ? undefined : '请先填写策略名'}
             onChange={(e) => onFormulaChange(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
                 e.preventDefault();
-                onRun();
+                if (nameFilled) onRun();
               }
             }}
             rows={3}
@@ -132,16 +139,18 @@ export default function SelectionControls({
             <button
               type="button"
               onClick={onSaveStrategy}
-              disabled={loading}
-              className="bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 px-4 py-2 rounded-xl font-bold"
+              disabled={loading || !nameFilled}
+              title={nameFilled ? undefined : '请先填写策略名'}
+              className="bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 px-4 py-2 rounded-xl font-bold disabled:opacity-50"
             >
               保存为策略
             </button>
             <button
               type="button"
               onClick={onRun}
-              disabled={loading}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-2 rounded-xl font-bold flex items-center justify-center gap-2 min-w-[160px]"
+              disabled={loading || !nameFilled}
+              title={nameFilled ? undefined : '请先填写策略名'}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-2 rounded-xl font-bold flex items-center justify-center gap-2 min-w-[160px] disabled:opacity-50"
             >
               {loading ? (
                 <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />

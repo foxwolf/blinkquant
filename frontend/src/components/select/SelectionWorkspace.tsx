@@ -149,7 +149,7 @@ export default function SelectionWorkspace() {
           onStrategyNameChange={setStrategyName}
           onExcludeStChange={setExcludeSt}
           onExcludeSuspendedChange={setExcludeSuspended}
-          onRun={() => handleSelect({ date: selectDate || undefined })}
+          onRun={() => strategyName.trim() ? handleSelect({ date: selectDate || undefined }) : undefined}
           onAISelect={() => setShowAISelect(true)}
           onSaveStrategy={() => setSaveStrategyOpen(true)}
           strategyPickerSlot={<StrategyPicker onPick={handlePickStrategy} />}

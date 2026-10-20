@@ -9,6 +9,7 @@ interface NlMeta {
 
 interface FormulaFunctionMenuProps {
   onInsert: (text: string) => void;
+  disabled?: boolean;
 }
 
 // 参数类型 → 中文标签（与后端 indicator_registry 签名约定一致）
@@ -101,12 +102,13 @@ function loadMeta(): Promise<NlMeta> {
   return metaPromise;
 }
 
-export default function FormulaFunctionMenu({ onInsert }: FormulaFunctionMenuProps) {
+export default function FormulaFunctionMenu({ onInsert, disabled }: FormulaFunctionMenuProps) {
   const [open, setOpen] = useState(false);
   const [meta, setMeta] = useState<NlMeta | null>(null);
   const [error, setError] = useState('');
 
   const toggle = useCallback(async () => {
+    if (disabled) return;
     const next = !open;
     setOpen(next);
     if (!next || meta) return;
@@ -116,7 +118,7 @@ export default function FormulaFunctionMenu({ onInsert }: FormulaFunctionMenuPro
     } catch {
       setError('函数列表加载失败');
     }
-  }, [open, meta]);
+  }, [open, meta, disabled]);
 
   const indicators = meta?.indicators || [];
   const descriptions = meta?.descriptions || {};
@@ -133,8 +135,9 @@ export default function FormulaFunctionMenu({ onInsert }: FormulaFunctionMenuPro
       <button
         type="button"
         onClick={() => void toggle()}
-        className="bg-white/90 border border-slate-200 hover:bg-white text-slate-500 text-xs font-bold px-2 py-1 rounded-lg shadow-sm"
-        title="插入常用公式函数"
+        disabled={disabled}
+        title={disabled ? '请先填写策略名' : '插入常用公式函数'}
+        className="bg-white/90 border border-slate-200 hover:bg-white text-slate-500 text-xs font-bold px-2 py-1 rounded-lg shadow-sm disabled:opacity-40"
       >
         ƒx 函数 ▾
       </button>
