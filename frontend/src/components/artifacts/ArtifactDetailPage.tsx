@@ -190,7 +190,7 @@ export default function ArtifactDetailPage({ kind }: { kind: 'selection' | 'back
                     {selectionSource && (
                       <div className="mt-4 rounded-xl border border-blue-100 bg-blue-50/60 p-3">
                         <div className="text-xs font-bold text-blue-700">策略版本快照</div>
-                        <div className="mt-1 text-sm text-blue-900">{selectionSource.name} · v{selectionSource.version_no}</div>
+                        <div className="mt-1 text-sm text-blue-900">{selectionSource.name}{selectionSource.version_no ? ` · v${selectionSource.version_no}` : ''}</div>
                         <div className="mt-1 text-xs font-mono text-blue-700 break-all">{selectionSource.formula} · {selectionSource.timeframe}</div>
                         {selectionSource.id && <Link href={'/strategies/selection/' + selectionSource.id} className="inline-block mt-2 text-xs font-bold text-blue-700 hover:underline">查看来源策略 v{selectionSource.version_no} →</Link>}
                       </div>

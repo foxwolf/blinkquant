@@ -19,7 +19,7 @@ function selectionMeta(task: Task) {
     formula: String(payload.formula || ''),
     timeframe: String(payload.timeframe || 'D'),
     date: payload.date ? String(payload.date) : '最近可用交易日',
-    source: source && source.id ? source : null,
+    source: source && source.name ? source : null,
   };
 }
 
@@ -204,11 +204,11 @@ export default function ArtifactLibraryPage({ kind = 'all' }: { kind?: ArtifactK
                           <div className="flex flex-wrap items-center gap-2">
                             <Link href={'/artifacts/selections/' + task.id} className="font-bold text-slate-800 hover:text-blue-600">{task.title || ('选股成果 #' + task.id)}</Link>
                             <span className="text-[10px] px-2 py-1 rounded-full bg-blue-50 text-blue-700">选股成果</span>
-                            {meta.source && <span className="text-[10px] px-2 py-1 rounded-full bg-slate-100 text-slate-600">策略 v{meta.source.version_no}</span>}
+                            {meta.source && meta.source.version_no ? <span className="text-[10px] px-2 py-1 rounded-full bg-slate-100 text-slate-600">策略 v{meta.source.version_no}</span> : null}
                           </div>
                           <div className="text-xs font-mono text-slate-500 mt-2 break-all">{meta.formula || '—'}</div>
                           <div className="text-xs text-slate-400 mt-2">周期：{meta.timeframe} · 日期：{meta.date} · 完成：{fmtTime(task.finished_at)}</div>
-                          {meta.source && <div className="text-xs text-blue-600 mt-1">来源策略：{meta.source.name} · v{meta.source.version_no}</div>}
+                          {meta.source && <div className="text-xs text-blue-600 mt-1">来源策略：{meta.source.name}{meta.source.version_no ? ` · v${meta.source.version_no}` : ''}</div>}
                         </div>
                         <div className="flex gap-2 shrink-0">
                           <Link href={'/artifacts/selections/' + task.id} className="px-3 py-2 text-xs font-bold text-blue-600 border border-blue-200 rounded-lg hover:bg-blue-50">查看成果</Link>
