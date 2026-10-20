@@ -119,7 +119,7 @@ export default function AISelectModal({ onClose, onRun }: AISelectModalProps) {
 
   return (
     <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-white rounded-2xl w-full max-w-lg shadow-xl p-6" onClick={(e) => e.stopPropagation()}>
+      <div className="bg-white rounded-2xl w-full max-w-lg shadow-xl p-6 max-h-[90dvh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         <h2 className="font-bold text-slate-700 mb-4">AI 选股</h2>
 
         <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">描述你的选股条件</label>
@@ -128,7 +128,7 @@ export default function AISelectModal({ onClose, onRun }: AISelectModalProps) {
           onChange={(e) => setQuery(e.target.value)}
           rows={2}
           disabled={loading}
-          className="mt-1 w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 disabled:opacity-50"
+          className="mt-1 w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm max-h-32 overflow-y-auto focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 disabled:opacity-50"
           placeholder="例如：市盈率低于20且总市值大于100亿的股票"
         />
 
@@ -154,11 +154,11 @@ export default function AISelectModal({ onClose, onRun }: AISelectModalProps) {
         {phase === 'confirm' && analysis && (
           <div className="mt-4">
             <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">语义确认</label>
-            <div className="mt-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-700">
+            <div className="mt-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-700 max-h-24 overflow-y-auto whitespace-pre-wrap">
               {analysis.restatement}
             </div>
 
-            <div className="mt-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-700">
+            <div className="mt-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-700 max-h-48 overflow-y-auto">
               <div className="font-bold text-slate-600 mb-1">条件清单</div>
               <ol className="list-decimal list-inside space-y-1">
                 {analysis.conditions.map((c, i) => (
