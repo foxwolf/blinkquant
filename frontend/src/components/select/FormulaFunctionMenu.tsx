@@ -118,7 +118,7 @@ export default function FormulaFunctionMenu({ onInsert }: FormulaFunctionMenuPro
       {open && (
         <>
           <div className="fixed inset-0 z-30" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 top-full mt-1 w-64 bg-white border border-slate-200 rounded-xl shadow-xl overflow-hidden">
+          <div className="absolute right-0 top-full mt-1 w-64 bg-white border border-slate-200 rounded-xl shadow-xl overflow-hidden z-40">
             <div className="max-h-72 overflow-y-auto">
               {error && <div className="px-3 py-4 text-xs text-red-600">{error}</div>}
               {!error && !meta && <div className="px-3 py-6 text-center text-xs text-slate-400">加载中…</div>}
