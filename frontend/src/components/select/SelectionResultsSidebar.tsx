@@ -118,7 +118,7 @@ export default function SelectionResultsSidebar(props: SelectionResultsSidebarPr
                         type="checkbox"
                         checked={isSelected}
                         onChange={() => toggle(code)}
-                        className="w-4 h-4 rounded border-slate-300 focus:ring-blue-500"
+                        className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500"
                       />
                       <button onClick={() => onViewStock(code)} className={`flex-1 min-w-0 text-left px-2 py-2 rounded-lg truncate group ${selectedCode === code ? 'text-blue-700 font-bold' : 'hover:bg-slate-50 text-slate-600'}`}>
                         {name}
