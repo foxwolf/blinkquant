@@ -99,10 +99,48 @@ class SelectionEngine:
                 setattr(data_manager, attr_name, updated_df)
                 logger.info(f"Hot-JIT Broadcast: Mounted {len(new_exprs)} cols to {attr_name}")
 
+    @staticmethod
+    def _apply_market_status_filters(df, codes, target_date,
+                                     exclude_st: bool = False,
+                                     exclude_suspended: bool = False) -> list:
+        """按日线末根 bar 的市场状态过滤选股结果 codes（保序）。
+
+        剔除ST：末根 bar isST != 0（null 视为非 ST）；
+        剔除停牌/零成交：末根 bar date < target_date（信号日无数据），
+        或末根 bar volume==0 且 amount==0（零成交占位行）。
+        """
+        codes = list(codes)
+        if not codes or (not exclude_st and not exclude_suspended):
+            return codes
+        sub = df.filter((pl.col("date") <= target_date) & pl.col("code").is_in(set(codes)))
+        if sub.is_empty():
+            return []
+        last = (sub.sort(["code", "date"])
+                .group_by("code")
+                .agg(pl.col("date").last().alias("_last_date"),
+                     pl.col("isST").last().alias("_is_st"),
+                     pl.col("volume").last().alias("_last_vol"),
+                     pl.col("amount").last().alias("_last_amt")))
+        keep = set()
+        for row in last.iter_rows(named=True):
+            if exclude_st:
+                st = row["_is_st"]
+                if st is not None and float(st) != 0.0:
+                    continue
+            if exclude_suspended:
+                if row["_last_date"] is not None and row["_last_date"] < target_date:
+                    continue
+                vol, amt = row["_last_vol"], row["_last_amt"]
+                if (vol is None or float(vol) == 0.0) and (amt is None or float(amt) == 0.0):
+                    continue
+            keep.add(row["code"])
+        return [c for c in codes if c in keep]
+
     def execute_selector(self, formula: str, timeframe: str, background_tasks, target_date=None,
                          backtest_mode: bool = False, raise_on_error: bool = False,
                          trace: bool = False, qfq_data_provider=None, latest_adj: dict = None,
-                         eligible_codes=None):
+                         eligible_codes=None, exclude_st: bool = False,
+                         exclude_suspended: bool = False):
         """执行选股。
 
         target_date（datetime.date）可选：指定时回退到 ≤ 该日的最近交易日，未指定用数据最新日。
@@ -196,6 +234,14 @@ class SelectionEngine:
         # 返回 SelectionResult（保持错误 dict 兼容）
         if isinstance(result_dict, dict) and "error" in result_dict:
             return result_dict
+
+        # 实时选股后置过滤：剔除 ST / 停牌（回测与 QFQ 路径 flags 恒为 False，不触发）
+        if (not backtest_mode) and (exclude_st or exclude_suspended):
+            result_codes = result_dict.get("codes") or []
+            if result_codes and data_manager.df_daily is not None:
+                result_dict["codes"] = self._apply_market_status_filters(
+                    data_manager.df_daily, result_codes, target_date,
+                    exclude_st=exclude_st, exclude_suspended=exclude_suspended)
 
         return SelectionResult(
             requested_date=requested_date,
@@ -638,6 +684,8 @@ class SelectionEngine:
         qfq_data_provider=None,
         latest_adj: dict = None,
         eligible_codes=None,
+        exclude_st: bool = False,
+        exclude_suspended: bool = False,
     ):
         """Execute selection and return selection plus candidate-level SignalTrace.
 
@@ -655,6 +703,8 @@ class SelectionEngine:
             qfq_data_provider=qfq_data_provider,
             latest_adj=latest_adj,
             eligible_codes=eligible_codes,
+            exclude_st=exclude_st,
+            exclude_suspended=exclude_suspended,
         )
 
         if isinstance(result, dict) and "error" in result:

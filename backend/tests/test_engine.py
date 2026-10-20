@@ -498,6 +498,90 @@ class TestHotJITWarmUp(unittest.TestCase):
                           "HotJIT should skip when expression is always null")
 
 
+class TestMarketStatusFilter(unittest.TestCase):
+    """实时选股后置过滤：可选剔除 ST / 停牌 / 零成交（exclude_st / exclude_suspended）。"""
+
+    BASE = datetime.date(2026, 8, 3)
+
+    def _load(self, rows):
+        dates, codes, closes, vols, amts, sts = [], [], [], [], [], []
+        for d, c, cl, v, a, st in rows:
+            dates.append(d); codes.append(c); closes.append(float(cl))
+            vols.append(float(v)); amts.append(float(a)); sts.append(st)
+        df = pl.DataFrame({
+            "date": dates,
+            "code": codes,
+            "close": closes,
+            "open": [c - 0.1 for c in closes],
+            "high": [c + 0.2 for c in closes],
+            "low": [c - 0.2 for c in closes],
+            "volume": vols,
+            "amount": amts,
+            "isST": sts,
+        }).sort(["code", "date"])
+        data_manager.df_daily = df
+        data_manager._resample_all()
+        return df
+
+    def _day(self, i):
+        return self.BASE + datetime.timedelta(days=i)
+
+    def _rows_normal(self, code, n=3, st=0):
+        return [(self._day(i), code, 10 + i, 1000, 10000, st) for i in range(n)]
+
+    def test_flags_off_noop(self):
+        df = self._load(
+            self._rows_normal("sh.A")
+            + self._rows_normal("sh.B", st=1)
+            + [(self._day(0), "sh.C", 9, 100, 1000, 0), (self._day(1), "sh.C", 9, 100, 1000, 0)])
+        out = selection_engine._apply_market_status_filters(
+            df, ["sh.A", "sh.B", "sh.C"], self._day(2), False, False)
+        self.assertEqual(out, ["sh.A", "sh.B", "sh.C"])
+
+    def test_st_excluded_null_kept(self):
+        rows = (self._rows_normal("sh.A")
+                + self._rows_normal("sh.B", st=1)
+                + [(self._day(i), "sh.D", 8 + i, 1000, 10000, None) for i in range(3)])
+        df = self._load(rows)
+        out = selection_engine._apply_market_status_filters(
+            df, ["sh.A", "sh.B", "sh.D"], self._day(2), True, False)
+        self.assertEqual(out, ["sh.A", "sh.D"])
+
+    def test_suspended_missing_bar_excluded(self):
+        df = self._load(
+            self._rows_normal("sh.A")
+            + [(self._day(0), "sh.C", 9, 100, 1000, 0), (self._day(1), "sh.C", 9, 100, 1000, 0)])
+        out = selection_engine._apply_market_status_filters(
+            df, ["sh.A", "sh.C"], self._day(2), False, True)
+        self.assertEqual(out, ["sh.A"])
+
+    def test_zero_volume_excluded_only_with_suspended_flag(self):
+        rows = (self._rows_normal("sh.A")
+                + self._rows_normal("sh.E")[:2]
+                + [(self._day(2), "sh.E", 12, 0, 0, 0)])
+        df = self._load(rows)
+        self.assertEqual(
+            selection_engine._apply_market_status_filters(df, ["sh.A", "sh.E"], self._day(2), False, True),
+            ["sh.A"])
+        self.assertEqual(
+            selection_engine._apply_market_status_filters(df, ["sh.A", "sh.E"], self._day(2), True, False),
+            ["sh.A", "sh.E"])
+
+    def test_execute_selector_applies_filters(self):
+        rows = (self._rows_normal("sh.A")
+                + self._rows_normal("sh.B", st=1)
+                + [(self._day(0), "sh.C", 9, 100, 1000, 0), (self._day(1), "sh.C", 9, 100, 1000, 0)])
+        self._load(rows)
+        res = selection_engine.execute_selector("CLOSE > 0", "D", None,
+                                                exclude_st=True, exclude_suspended=True)
+        self.assertEqual(list(res.codes), ["sh.A"])
+
+    def test_execute_selector_default_flags_keep_all(self):
+        self._load(self._rows_normal("sh.A") + self._rows_normal("sh.B", st=1))
+        res = selection_engine.execute_selector("CLOSE > 0", "D", None)
+        self.assertEqual(sorted(res.codes), ["sh.A", "sh.B"])
+
+
 if __name__ == '__main__':
     unittest.main()
 if __name__ == "__main__":
