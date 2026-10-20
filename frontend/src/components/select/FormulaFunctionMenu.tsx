@@ -19,6 +19,19 @@ const ARG_TYPE_LABELS: Record<string, string> = {
   cond: '条件式',
 };
 
+// 插入编辑框时按参数类型生成占位提示（用户替换为实际参数）
+const PLACEHOLDER_ARG_LABELS: Record<string, string> = {
+  field: '高/低/开/收',
+  pos_int: '20天',
+  series: '序列(收/均线)',
+  cond: '条件式',
+};
+
+function placeholderCall(name: string, signature: string[]): string {
+  const args = signature.map((t) => PLACEHOLDER_ARG_LABELS[t] || t);
+  return `${name}(${args.join(', ')})`;
+}
+
 const WINDOW_GROUP = ['MA', 'EMA', 'STD', 'ROC', 'REF', 'HHV', 'LLV', 'SUM'];
 const LOGIC_GROUP = ['CROSS_UP', 'CROSS_DOWN', 'MAX', 'MIN', 'ABS', 'COUNT', 'BARSLAST'];
 
@@ -140,10 +153,10 @@ export default function FormulaFunctionMenu({ onInsert }: FormulaFunctionMenuPro
                       <button
                         key={n}
                         type="button"
-                        title={SAMPLE_CALLS[n] || `${n}()`}
+                        title={SAMPLE_CALLS[n] ? `示例：${SAMPLE_CALLS[n]}` : n}
                         onClick={() => {
                           setOpen(false);
-                          onInsert(SAMPLE_CALLS[n] || `${n}()`);
+                          onInsert(placeholderCall(n, signatures[n] || []));
                         }}
                         className="w-full text-left px-3 py-1.5 hover:bg-blue-50 border-b border-slate-50 last:border-b-0"
                       >
