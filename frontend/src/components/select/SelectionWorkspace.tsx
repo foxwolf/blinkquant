@@ -20,7 +20,6 @@ export default function SelectionWorkspace() {
   const [showStrategies, setShowStrategies] = useState(false);
   const [saveStrategyOpen, setSaveStrategyOpen] = useState(false);
   const [showAISelect, setShowAISelect] = useState(false);
-  const [strategyName, setStrategyName] = useState('');
   const [selectionStrategySource, setSelectionStrategySource] = useState<SelectionStrategySnapshot | undefined>(undefined);
   const { submitTask } = useCluster();
 
@@ -32,6 +31,12 @@ export default function SelectionWorkspace() {
     setFormula,
     selectDate,
     setSelectDate,
+    strategyName,
+    setStrategyName,
+    excludeSt,
+    setExcludeSt,
+    excludeSuspended,
+    setExcludeSuspended,
     timeframe,
     setTimeframe,
     results,
@@ -41,6 +46,7 @@ export default function SelectionWorkspace() {
   } = useSelection({
     submitTask,
     onClearSelectedStock: closeKline,
+    strategySource: selectionStrategySource,
   });
 
   // 从策略库进入选股工作台时，读取一次待恢复的策略并清理会话标记。
@@ -53,6 +59,7 @@ export default function SelectionWorkspace() {
         const pending = JSON.parse(selectionRaw);
         if (typeof pending?.formula === 'string' && pending.formula.trim()) {
           setFormula(pending.formula);
+          if (typeof pending.name === 'string') setStrategyName(pending.name);
           if (['D', 'W', 'M'].includes(pending.timeframe)) setTimeframe(pending.timeframe);
           if (Number(pending.id) > 0) {
             setSelectionStrategySource({
@@ -70,7 +77,7 @@ export default function SelectionWorkspace() {
     } finally {
       sessionStorage.removeItem('bq-pending-selection-strategy');
     }
-  }, [user, setFormula, setTimeframe]);
+  }, [user, setFormula, setStrategyName, setTimeframe]);
 
   // Deep link: 旧股票研究页桩重定向到 /select?code=<symbol>，此处消费后清理 URL。
   // App Router 的 useRouter() 无 .query，深链必经 /stocks 桩跨路由落地（组件必重新挂载），effect 读 window.location 即可。
@@ -95,7 +102,6 @@ export default function SelectionWorkspace() {
         alert(json.error || '保存失败');
         return;
       }
-      setStrategyName('');
       setSaveStrategyOpen(false);
     } catch (e) {
       alert('保存失败');
@@ -130,9 +136,15 @@ export default function SelectionWorkspace() {
         <SelectionControls
           formula={formula}
           selectDate={selectDate}
+          strategyName={strategyName}
+          excludeSt={excludeSt}
+          excludeSuspended={excludeSuspended}
           loading={loading}
           onFormulaChange={setFormula}
           onDateChange={setSelectDate}
+          onStrategyNameChange={setStrategyName}
+          onExcludeStChange={setExcludeSt}
+          onExcludeSuspendedChange={setExcludeSuspended}
           onRun={() => handleSelect({ date: selectDate || undefined })}
           onAISelect={() => setShowAISelect(true)}
           onSaveStrategy={() => setSaveStrategyOpen(true)}
@@ -185,9 +197,20 @@ export default function SelectionWorkspace() {
       {showAISelect && (
         <AISelectModal
           onClose={() => setShowAISelect(false)}
-          onRun={(formula, timeframe, date) => {
+          onRun={(aiFormula, aiTimeframe, aiDate) => {
             setShowAISelect(false);
-            handleSelect({ formula, timeframe, date: date || selectDate || undefined });
+            // 回填卡片：所见即所跑；与来源快照公式不一致时清快照，策略名保留
+            handleFormulaChange(aiFormula);
+            setTimeframe(aiTimeframe);
+            if (aiDate) setSelectDate(aiDate);
+            const snapshotStillMatches =
+              !!selectionStrategySource && aiFormula.trim() === selectionStrategySource!.formula.trim();
+            handleSelect({
+              formula: aiFormula,
+              timeframe: aiTimeframe,
+              date: aiDate || selectDate || undefined,
+              strategySource: snapshotStillMatches && selectionStrategySource ? selectionStrategySource : null,
+            });
           }}
         />
       )}

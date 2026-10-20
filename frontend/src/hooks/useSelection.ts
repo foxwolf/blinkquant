@@ -100,17 +100,26 @@ export default function useSelection({
   }, [onClearSelectedStock]);
 
   const handleSelect = useCallback(
-    async (overrides?: { formula?: string; timeframe?: string; date?: string }) => {
+    async (overrides?: {
+      formula?: string;
+      timeframe?: string;
+      date?: string;
+      // null explicitly runs without a strategy snapshot (name-only fallback);
+      // undefined keeps the current strategySource.
+      strategySource?: SelectionStrategySnapshot | null;
+    }) => {
       setLoading(true);
       clearResults();
 
       const f = overrides?.formula ?? formula;
       const t = overrides?.timeframe ?? timeframe;
       const d = overrides?.date;
+      const effSource =
+        overrides && overrides.strategySource !== undefined ? overrides.strategySource : strategySource;
       const nameTrim = strategyName.trim();
       // 来源快照（策略库进入）优先；否则纯命名快照仅带 name（成果标题/来源行按 name 显示）
-      const snapshot = strategySource
-        ? { selection_strategy_snapshot: strategySource }
+      const snapshot = effSource
+        ? { selection_strategy_snapshot: effSource }
         : nameTrim
           ? { selection_strategy_snapshot: { name: nameTrim, formula: f, timeframe: t } }
           : {};
