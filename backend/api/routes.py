@@ -45,6 +45,8 @@ class SelectionRequest(BaseModel):
     timeframe: str = "D"
     date: Optional[datetime.date] = None  # 可选目标交易日（YYYY-MM-DD）；早于数据起点时回退语义见 engine
     trace: bool = False  # 按需返回原子级 SignalTrace
+    exclude_st: bool = False  # 剔除 ST（末根日线 bar isST != 0）
+    exclude_suspended: bool = False  # 剔除停牌/零成交（末根日线 bar 早于信号日或量额均为 0）
 
 
 class BacktestRequest(BaseModel):
@@ -123,6 +125,8 @@ async def select_stocks(req: SelectionRequest, background_tasks: BackgroundTasks
             req.timeframe,
             background_tasks,
             req.date,
+            exclude_st=req.exclude_st,
+            exclude_suspended=req.exclude_suspended,
         )
     else:
         result = await asyncio.to_thread(
@@ -130,7 +134,9 @@ async def select_stocks(req: SelectionRequest, background_tasks: BackgroundTasks
             req.formula,
             req.timeframe,
             background_tasks,
-            req.date
+            req.date,
+            exclude_st=req.exclude_st,
+            exclude_suspended=req.exclude_suspended,
         )
         signal_trace = None
 
