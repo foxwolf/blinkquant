@@ -1,6 +1,7 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useMemo, useState } from 'react';
 import WatchlistPicker from '../WatchlistPicker';
+import { groupResultsByIndustry } from '../../lib/selectionGroups';
 
 interface WatchlistSummary {
   id: string;
@@ -26,6 +27,8 @@ export default function SelectionResultsSidebar(props: SelectionResultsSidebarPr
   const [listId, setListId] = useState('');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
+  const groups = useMemo(() => groupResultsByIndustry(results, stockList), [results, stockList]);
+  const nameByCode = useMemo(() => new Map(stockList.map((s): [string, string] => [s.code, s.name])), [stockList]);
 
   useEffect(() => {
     setSelectedCodes((prev) => new Set(Array.from(prev).filter((code) => results.includes(code))));
@@ -100,29 +103,33 @@ export default function SelectionResultsSidebar(props: SelectionResultsSidebarPr
           {message && <div className="mt-1 text-[11px] text-slate-500">{message}</div>}
         </div>
         <div className="overflow-y-auto p-2 max-h-[65vh] custom-scrollbar flex flex-col gap-1">
-          {results.map(code => {
-            const stock = stockList.find(s => s.code === code);
-            const name = stock?.name || code;
-            const industry = stock?.industry;
-            const isSelected = selectedCodes.has(code);
-            return (
-              <div key={code} className={`rounded-lg border border-slate-200 ${isSelected ? 'bg-blue-50 border-blue-100' : 'bg-white hover:bg-slate-50'}`}>
-                <div className="flex items-center gap-2 px-2 py-2">
-                  <input
-                    type="checkbox"
-                    checked={isSelected}
-                    onChange={() => toggle(code)}
-                    className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500"
-                  />
-                  <button onClick={() => onViewStock(code)} className={`flex-1 min-w-0 text-left px-2 py-2 rounded-lg flex justify-between group ${selectedCode === code ? 'text-blue-700 font-bold' : 'hover:bg-slate-50 text-slate-600'}`}>
-                    <span className="truncate">{name}</span>
-                    <span className="text-xs text-slate-400 ml-2 truncate max-w-[45%]">{industry || '—'}</span>
-                  </button>
-                  <WatchlistPicker code={code} compact />
-                </div>
+          {groups.map((group) => (
+            <Fragment key={group.industry}>
+              <div className="sticky top-0 z-10 bg-white/95 px-2 py-1 text-xs font-bold text-slate-500 border-b border-slate-100">
+                {group.industry} · {group.codes.length}只
               </div>
-            );
-          })}
+              {group.codes.map(code => {
+                const name = nameByCode.get(code) || code;
+                const isSelected = selectedCodes.has(code);
+                return (
+                  <div key={code} className={`rounded-lg border border-slate-200 ${isSelected ? 'bg-blue-50 border-blue-100' : 'bg-white hover:bg-slate-50'}`}>
+                    <div className="flex items-center gap-2 px-2 py-2">
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => toggle(code)}
+                        className="w-4 h-4 rounded border-slate-300 focus:ring-blue-500"
+                      />
+                      <button onClick={() => onViewStock(code)} className={`flex-1 min-w-0 text-left px-2 py-2 rounded-lg truncate group ${selectedCode === code ? 'text-blue-700 font-bold' : 'hover:bg-slate-50 text-slate-600'}`}>
+                        {name}
+                      </button>
+                      <WatchlistPicker code={code} compact />
+                    </div>
+                  </div>
+                );
+              })}
+            </Fragment>
+          ))}
           {results.length === 0 && <div className="text-xs text-slate-400 text-center py-4">暂无结果</div>}
         </div>
       </div>
