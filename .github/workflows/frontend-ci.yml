@@ -41,6 +41,8 @@ jobs:
         run: node tests/user-assets-storage-contract.test.mjs
       - name: AI stock select LLM config regression
         run: node tests/llm-config.test.mjs
+      - name: Select results industry grouping regression
+        run: node tests/selection-groups.test.mjs
       - name: IA5.10 backend asset route syntax regression
         run: python -m py_compile ../backend/scheduler/user_assets.py
       - run: npm run build
