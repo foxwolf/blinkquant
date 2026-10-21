@@ -214,8 +214,17 @@ class BlinkParser:
             tf = next(iter(prefixes))
             self._check_no_sector_fields(node)
         src = ast.unparse(node)
-        return {"type": "atom", "tf": tf, "source": src,
-                "expr": self.parse_expression(src, timeframe=tf)}
+        # atom 解析必须显式控制 mount_enabled：
+        # - D 原子：as-of frame = df_daily 过滤（挂载列保留），允许挂载列快路径
+        # - W/M 原子：as-of frame 为重建表（列白名单，无挂载列），必须走慢路径；
+        #   否则命中挂载列的 expr 在 _eval_atom 求值时 ColumnNotFound → 静默 0 结果
+        prev_mount = self.mount_enabled
+        self.mount_enabled = (tf == 'D')
+        try:
+            expr = self.parse_expression(src, timeframe=tf)
+        finally:
+            self.mount_enabled = prev_mount
+        return {"type": "atom", "tf": tf, "source": src, "expr": expr}
 
     def _collect_prefixes(self, node: ast.AST) -> set:
         """遍历 AST 收集所有 D./W./M. 前缀。"""

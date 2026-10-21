@@ -22,6 +22,11 @@ class BacktestSelectionError(RuntimeError):
     pass
 
 
+class AtomEvalError(RuntimeError):
+    """MTF 原子求值失败（实时选股路径转为 error dict，不再静默返回空集）。"""
+    pass
+
+
 class SelectionEngine:
     def __init__(self):
         _funcs = "|".join(WINDOW_NAMES)
@@ -529,12 +534,20 @@ class SelectionEngine:
             return {"error": f"Parse error: {e}"}
 
         # 递归折叠 plan tree
-        result_set = self._fold_plan(plan, target_date, base_tf,
-                                     backtest_mode=backtest_mode,
-                                     raise_on_error=raise_on_error,
-                                     qfq_data_provider=qfq_data_provider,
-                                     latest_adj=latest_adj,
-                                     eligible_codes=eligible_codes)
+        try:
+            result_set = self._fold_plan(plan, target_date, base_tf,
+                                         backtest_mode=backtest_mode,
+                                         raise_on_error=raise_on_error,
+                                         qfq_data_provider=qfq_data_provider,
+                                         latest_adj=latest_adj,
+                                         eligible_codes=eligible_codes)
+        except AtomEvalError as e:
+            # 实时选股：原子求值失败（如挂载列缺失、数据异常）→ 明确报错而非静默 0
+            if raise_on_error:
+                raise BacktestSelectionError(
+                    f"MTF atom eval failed: formula={formula!r}, "
+                    f"target_date={target_date}: {e}") from e
+            return {"error": f"MTF atom eval failed: {e}"}
         codes = sorted(result_set) if result_set else set()
 
         return {"codes": list(codes), "date": target_date.isoformat()}
@@ -610,8 +623,8 @@ class SelectionEngine:
             if df.is_empty():
                 return set()
 
-        # 设置 mount_enabled：基础周期原子可挂载，非基础周期原子走 slow-path
-        blink_parser.mount_enabled = (tf == base_tf)
+        # mount_enabled 由 _build_plan 在解析阶段按原子周期显式控制；
+        # 求值阶段不再触碰全局 parser 状态（避免污染下一次解析）。
 
         try:
             # 先计算指标（全历史窗口）→ 每只股票取最后一根 → 判 _signal
@@ -631,8 +644,11 @@ class SelectionEngine:
                     f"MTF atom eval failed: tf={tf}, "
                     f"target_date={target_date}, "
                     f"atom={atom.get('source', '?')}: {e}") from e
+            # 实时选股：不再静默吞异常返回空集（曾导致"结果为 0"假象），
+            # 统一抛 AtomEvalError 由 _execute_mtf 转 error dict → API 400。
             logger.warning(f"Atom eval failed for {tf}: {e}")
-            result_codes = set()
+            raise AtomEvalError(
+                f"tf={tf}, atom={atom.get('source', '?')}: {e}") from e
 
         # 更新 set cache（LRU：超容量删最旧）
         if len(self._set_cache) >= self._set_cache_max:
