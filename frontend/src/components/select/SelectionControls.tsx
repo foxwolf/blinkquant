@@ -6,6 +6,7 @@ interface SelectionControlsProps {
   formula: string;
   selectDate: string;
   strategyName: string;
+  timeframe: string;
   excludeSt: boolean;
   excludeSuspended: boolean;
   loading: boolean;
@@ -13,6 +14,7 @@ interface SelectionControlsProps {
   onFormulaChange: (value: string) => void;
   onDateChange: (value: string) => void;
   onStrategyNameChange: (value: string) => void;
+  onTimeframeChange: (tf: 'D' | 'W' | 'M') => void;
   onExcludeStChange: (value: boolean) => void;
   onExcludeSuspendedChange: (value: boolean) => void;
   onRun: () => void;
@@ -20,10 +22,17 @@ interface SelectionControlsProps {
   onSaveStrategy: () => void;
 }
 
+const TIMEFRAME_OPTIONS: Array<{ value: 'D' | 'W' | 'M'; label: string; title: string }> = [
+  { value: 'D', label: '日', title: '日周期选股' },
+  { value: 'W', label: '周', title: '周周期选股' },
+  { value: 'M', label: '月', title: '月周期选股' },
+];
+
 export default function SelectionControls({
   formula,
   selectDate,
   strategyName,
+  timeframe,
   excludeSt,
   excludeSuspended,
   loading,
@@ -31,6 +40,7 @@ export default function SelectionControls({
   onFormulaChange,
   onDateChange,
   onStrategyNameChange,
+  onTimeframeChange,
   onExcludeStChange,
   onExcludeSuspendedChange,
   onRun,
@@ -108,7 +118,23 @@ export default function SelectionControls({
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <label className="text-xs font-bold text-slate-500">基准日期</label>
+          <span className="text-xs font-bold text-slate-500">周期</span>
+          <div className="flex items-center gap-1 border border-slate-200 rounded-lg p-0.5" role="group" aria-label="选股周期">
+            {TIMEFRAME_OPTIONS.map((tf) => (
+              <button
+                key={tf.value}
+                type="button"
+                onClick={() => onTimeframeChange(tf.value)}
+                disabled={loading}
+                title={tf.title}
+                aria-pressed={timeframe === tf.value}
+                className={`px-2.5 py-1.5 text-xs font-bold rounded-md transition-colors disabled:opacity-50 ${timeframe === tf.value ? 'bg-blue-600 text-white' : 'text-slate-500 hover:bg-slate-100'}`}
+              >
+                {tf.label}
+              </button>
+            ))}
+          </div>
+          <label className="text-xs font-bold text-slate-500 ml-2">基准日期</label>
           <input
             type="date"
             title="选股日期（留空 = 最新交易日）"

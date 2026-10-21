@@ -141,12 +141,14 @@ export default function SelectionWorkspace() {
           formula={formula}
           selectDate={selectDate}
           strategyName={strategyName}
+          timeframe={timeframe}
           excludeSt={excludeSt}
           excludeSuspended={excludeSuspended}
           loading={loading}
           onFormulaChange={setFormula}
           onDateChange={setSelectDate}
           onStrategyNameChange={setStrategyName}
+          onTimeframeChange={setTimeframe}
           onExcludeStChange={setExcludeSt}
           onExcludeSuspendedChange={setExcludeSuspended}
           onRun={() => strategyName.trim() ? handleSelect({ date: selectDate || undefined }) : undefined}

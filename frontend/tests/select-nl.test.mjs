@@ -100,11 +100,39 @@ function validateFormula(meta, formula) {
   const indicators = new Set(meta.indicators);
   const sigs = meta.signatures ?? {};
 
+  // 0. 原子级周期混用检查（与后端 parse_multi_tf 对齐）：同一原子（顶层 AND/OR
+  // 分隔，含括号内嵌套）内不允许同时出现带周期前缀的 token 与裸字段。
+  // 如 W.MA(CLOSE,5) 非法，应写 W.MA(W.CLOSE,5)。
+  const normalizedForAtoms = formula.replace(/&&/g, ' AND ').replace(/\|\|/g, ' OR ');
+  for (const atom of splitBoolTopLevel(normalizedForAtoms)) {
+    const atomTokenRe = /(?:([DWM])\.)?([A-Z_][A-Z0-9_]*)/g;
+    let hasPrefixed = false;
+    let hasBareField = false;
+    let tm;
+    while ((tm = atomTokenRe.exec(atom)) !== null) {
+      const token = tm[2];
+      if (token === 'AND' || token === 'OR') continue;
+      if (tm[1]) {
+        hasPrefixed = true;
+      } else if (fields.has(token)) {
+        hasBareField = true;
+      }
+      if (hasPrefixed && hasBareField) {
+        return {
+          ok: false,
+          reason: '同一原子内不能混用裸字段与周期前缀（如 W.MA(CLOSE,5) 应写 W.MA(W.CLOSE,5)）',
+        };
+      }
+    }
+  }
+
   // 1. 校验所有函数调用签名（含嵌套，正则全局扫描）
-  const callRegex = /([A-Z_][A-Z0-9_]*)\s*\(/g;
+  // 支持可选的周期前缀：W.MA(W.CLOSE, 20) 或 MA(CLOSE, 20)
+  const callRegex = /(?:([DWM])\.)?([A-Z_][A-Z0-9_]*)\s*\(/g;
   let m;
   while ((m = callRegex.exec(formula)) !== null) {
-    const func = m[1];
+    const tfPrefix = m[1]; // 可选 D/W/M
+    const func = m[2];
     // AND/OR 是布尔逻辑词，后跟 ( 是括号条件而非函数调用
     if (func === 'AND' || func === 'OR') continue;
     const sig = sigs[func];
@@ -114,19 +142,29 @@ function validateFormula(meta, formula) {
     if (closeIdx === -1) return { ok: false, reason: '公式括号不配对' };
     const argStr = formula.slice(openIdx + 1, closeIdx);
     const args = splitTopLevel(argStr, ',').map((s) => s.trim());
-    const v = validateCallArgs(meta, sig, args, func);
+    const v = validateCallArgs(meta, sig, args, func, tfPrefix);
     if (v.ok === false) return v;
     callRegex.lastIndex = closeIdx + 1;
   }
 
   // 2. 其余大写标识符必须 ∈ 白名单
-  const tokenRegex = /[A-Z_][A-Z0-9_]*/g;
+  // 支持可选的周期前缀：W.CLOSE / D.VOL 等
+  const tokenRegex = /(?:(?:([DWM])\.)?([A-Z_][A-Z0-9_]*))/g;
   let t;
   while ((t = tokenRegex.exec(formula)) !== null) {
-    const token = t[0];
+    const tfPrefix = t[1];
+    const token = t[2];
     if (['AND', 'OR'].includes(token)) continue;
-    if (indicators.has(token) || fields.has(token)) continue;
-    return { ok: false, reason: `未识别标识符 ${token}` };
+    if (tfPrefix) {
+      // 带前缀的标识符：必须是字段或指标（W.MA / D.CLOSE 均合法）
+      if (!fields.has(token) && !indicators.has(token)) {
+        return { ok: false, reason: `未识别字段 ${token}` };
+      }
+    } else {
+      // 无前缀的标识符：必须是指标或字段
+      if (indicators.has(token) || fields.has(token)) continue;
+      return { ok: false, reason: `未识别标识符 ${token}` };
+    }
   }
   return { ok: true };
 }
@@ -179,7 +217,7 @@ function splitBoolTopLevel(s) {
   return out.filter((x) => x !== '');
 }
 
-function validateCallArgs(meta, sig, args, func) {
+function validateCallArgs(meta, sig, args, func, tfPrefix) {
   if (args.length !== sig.length) {
     return { ok: false, reason: `函数 ${func} 必须恰好 ${sig.length} 个参数` };
   }
@@ -187,8 +225,14 @@ function validateCallArgs(meta, sig, args, func) {
     const kind = sig[i];
     const arg = args[i];
     if (kind === 'field') {
-      if (!meta.fields.includes(arg)) {
+      // 支持带前缀的字段：W.CLOSE, D.VOL 等
+      const fieldMatch = /^(?:([DWM])\.)?([A-Z_][A-Z0-9_]*)$/.exec(arg);
+      if (!fieldMatch) {
         return { ok: false, reason: `函数 ${func} 参数 ${arg} 不在字段白名单` };
+      }
+      const fieldName = fieldMatch[2];
+      if (!meta.fields.includes(fieldName)) {
+        return { ok: false, reason: `函数 ${func} 参数 ${fieldName} 不在字段白名单` };
       }
     } else if (kind === 'pos_int') {
       if (!/^\d+$/.test(arg) || Number(arg) < 1 || Number(arg) > POS_INT_MAX) {
@@ -208,28 +252,33 @@ function validateCallArgs(meta, sig, args, func) {
 }
 
 function isSeriesExpr(meta, tok) {
-  if (meta.fields.includes(tok)) return true;
-  // 1. 平衡外括号剥离
-  if (tok.trim().startsWith('(') && matchParen(tok.trim(), 0) === tok.trim().length - 1) {
-    return isSeriesExpr(meta, tok.trim().slice(1, -1));
+  const trimmed = tok.trim();
+  // 0. 带前缀的字段：W.CLOSE, D.VOL 等
+  const prefixedFieldMatch = /^(?:([DWM])\.)?([A-Z_][A-Z0-9_]*)$/.exec(trimmed);
+  if (prefixedFieldMatch && meta.fields.includes(prefixedFieldMatch[2])) return true;
+  if (meta.fields.includes(trimmed)) return true;
+  // 1. 平衡外括号剥离：'(CLOSE-OPEN)' → 'CLOSE-OPEN'（后端 ast 对括号透明，前端需显式剥）
+  if (trimmed.startsWith('(') && matchParen(trimmed, 0) === trimmed.length - 1) {
+    return isSeriesExpr(meta, trimmed.slice(1, -1));
   }
-  // 2. 函数调用路径：仅当 call 的闭合括号恰在末尾
-  const mm = /^([A-Z_][A-Z0-9_]*)\s*\(/.exec(tok);
+  // 2. 函数调用路径：支持可选前缀 W.MA(...) 或 MA(...)
+  const mm = /^(?:([DWM])\.)?([A-Z_][A-Z0-9_]*)\s*\(/.exec(trimmed);
   if (mm) {
-    const sig = meta.signatures?.[mm[1]];
+    const funcName = mm[2];
+    const sig = meta.signatures?.[funcName];
     const openIdx = mm.index + mm[0].length - 1;
     if (sig && !sig.includes('cond')) {
-      const closeIdx = matchParen(tok, openIdx);
-      if (closeIdx === tok.length - 1) {
-        const argStr = tok.slice(openIdx + 1, closeIdx);
+      const closeIdx = matchParen(trimmed, openIdx);
+      if (closeIdx === trimmed.length - 1) {
+        const argStr = trimmed.slice(openIdx + 1, closeIdx);
         const args = splitTopLevel(argStr, ',').map((s) => s.trim());
-        if (validateCallArgs(meta, sig, args, mm[1]).ok === true) return true;
+        if (validateCallArgs(meta, sig, args, funcName, mm[1]).ok === true) return true;
       }
     }
   }
-  // 3. 算术表达式路径
-  const aparts = splitArithTopLevel(tok);
-  if (aparts.length > 1) return isArithExpr(meta, tok);
+  // 3. 算术表达式路径：函数调用路径不匹配（非纯调用/尾部有残留/非调用）时尝试
+  const aparts = splitArithTopLevel(trimmed);
+  if (aparts.length > 1) return isArithExpr(meta, trimmed);
   return false;
 }
 
@@ -777,6 +826,31 @@ test('validateFormula: 未知算子拒绝', () => {
 test('validateFormula: cond 支持数值操作数', () => {
   const r = validateFormula(META, 'COUNT(CLOSE > 11, 3)');
   assert.equal(r.ok, true);
+});
+
+test('validateFormula: 原子内混用裸字段与周期前缀拒绝', () => {
+  // LLM 常见坏输出：前缀指标 + 裸字段参数（后端 parse_multi_tf 拒绝）
+  const r1 = validateFormula(META, 'W.MA(CLOSE, 5) > W.MA(CLOSE, 20)');
+  assert.equal(r1.ok, false);
+  assert.match(r1.reason, /混用/);
+  // 裸字段与前缀字段直接比较同样拒绝
+  const r2 = validateFormula(META, 'W.CLOSE > CLOSE');
+  assert.equal(r2.ok, false);
+  // cond 嵌套内混用也拒绝（同一原子）
+  const r3 = validateFormula(META, 'COUNT(W.CLOSE > CLOSE, 3)');
+  assert.equal(r3.ok, false);
+});
+
+test('validateFormula: 全前缀与跨原子混用放行', () => {
+  // 合法 MTF：全前缀原子
+  assert.equal(validateFormula(META, 'W.MA(W.CLOSE, 5) > W.MA(W.CLOSE, 20)').ok, true);
+  assert.equal(validateFormula(META, 'W.CLOSE > 0').ok, true);
+  // 跨原子混用合法（各原子内部自洽）
+  assert.equal(validateFormula(META, 'CLOSE > 10 AND W.CLOSE > 0').ok, true);
+  // && || 归一后同样按原子拆分
+  assert.equal(validateFormula(META, 'CLOSE > 10 && W.CLOSE > 0').ok, true);
+  // 无前缀公式不受影响
+  assert.equal(validateFormula(META, 'MA(CLOSE, 5) > MA(CLOSE, 20)').ok, true);
 });
 
 test('validateFormula: cond == 拒绝', () => {

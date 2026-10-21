@@ -118,6 +118,33 @@ export function validateFormula(
   const indicators = new Set(meta.indicators);
   const sigs = meta.signatures ?? {};
 
+  // 0. 原子级周期混用检查（与后端 parse_multi_tf 的
+  // _collect_prefixes + _has_bare_fields 对齐）：同一原子（顶层 AND/OR 分隔，
+  // 含括号内嵌套）内不允许同时出现带周期前缀的 token 与裸字段。
+  // 如 W.MA(CLOSE,5) 非法，应写 W.MA(W.CLOSE,5)。
+  const normalizedForAtoms = formula.replace(/&&/g, ' AND ').replace(/\|\|/g, ' OR ');
+  for (const atom of splitBoolTopLevel(normalizedForAtoms)) {
+    const atomTokenRe = /(?:([DWM])\.)?([A-Z_][A-Z0-9_]*)/g;
+    let hasPrefixed = false;
+    let hasBareField = false;
+    let tm: RegExpExecArray | null;
+    while ((tm = atomTokenRe.exec(atom)) !== null) {
+      const token = tm[2];
+      if (token === 'AND' || token === 'OR') continue;
+      if (tm[1]) {
+        hasPrefixed = true;
+      } else if (fields.has(token)) {
+        hasBareField = true;
+      }
+      if (hasPrefixed && hasBareField) {
+        return {
+          ok: false,
+          reason: '同一原子内不能混用裸字段与周期前缀（如 W.MA(CLOSE,5) 应写 W.MA(W.CLOSE,5)）',
+        };
+      }
+    }
+  }
+
   // 1. 校验所有函数调用签名（含嵌套，正则全局扫描）
   // 支持可选的周期前缀：W.MA(W.CLOSE, 20) 或 MA(CLOSE, 20)
   const callRegex = /(?:([DWM])\.)?([A-Z_][A-Z0-9_]*)\s*\(/g;
