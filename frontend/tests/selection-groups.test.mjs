@@ -5,6 +5,19 @@ import assert from 'node:assert/strict';
 
 const OTHER_INDUSTRY = '其他';
 
+const LEVEL_SUFFIX = /[ⅠⅡⅢⅣⅤ]+/g;
+
+function coarseIndustry(industry) {
+  const segs = Array.from(new Set(
+    industry
+      .split('/')
+      .map((s) => s.replace(LEVEL_SUFFIX, '').trim())
+      .filter(Boolean),
+  ));
+  if (segs.length === 0) return '';
+  return segs.reduce((a, b) => (b.length < a.length || (b.length === a.length && b < a) ? b : a));
+}
+
 function groupResultsByIndustry(results, stockList) {
   const industryByCode = new Map();
   for (const s of stockList) {
@@ -15,13 +28,13 @@ function groupResultsByIndustry(results, stockList) {
   for (const code of results) {
     if (seen.has(code)) continue;
     seen.add(code);
-    const industry = industryByCode.get(code) || OTHER_INDUSTRY;
+    const industry = coarseIndustry(industryByCode.get(code) || '') || OTHER_INDUSTRY;
     const bucket = buckets.get(industry);
     if (bucket) bucket.push(code); else buckets.set(industry, [code]);
   }
   const normal = [];
   let other = null;
-  for (const [industry, codes] of buckets) {
+  for (const [industry, codes] of Array.from(buckets)) {
     codes.sort();
     if (industry === OTHER_INDUSTRY) other = { industry, codes };
     else normal.push({ industry, codes });
@@ -76,4 +89,31 @@ test('stockList 未加载时全部落入「其他」按代码升序', () => {
 
 test('空结果返回空数组', () => {
   assert.deepStrictEqual(groupResultsByIndustry([], [{ code: 'a', name: 'a', industry: 'x' }]), []);
+});
+
+test('多级行业路径归并：不同顺序的银行股并入同一组', () => {
+  const stockList = [
+    { code: 'sh.601398', name: '工商银行', industry: '银行Ⅱ/银行/国有大型银行Ⅲ' },
+    { code: 'sh.601939', name: '建设银行', industry: '银行/银行Ⅱ/国有大型银行Ⅲ' },
+    { code: 'sh.600036', name: '招商银行', industry: '股份制银行Ⅲ/银行Ⅱ/银行' },
+    { code: 'sh.601988', name: '中国银行', industry: '国有大型银行Ⅲ/银行Ⅱ/银行' },
+    { code: 'sz.300750', name: '宁德时代', industry: '锂电池/电力设备/电池' },
+  ];
+  const results = ['sh.601398', 'sh.601939', 'sh.600036', 'sh.601988', 'sz.300750'];
+  const groups = groupResultsByIndustry(results, stockList);
+  assert.deepStrictEqual(groups, [
+    { industry: '银行', codes: ['sh.600036', 'sh.601398', 'sh.601939', 'sh.601988'] },
+    { industry: '电池', codes: ['sz.300750'] },
+  ]);
+});
+
+test('coarseIndustry：去后缀、顺序无关、并列取字典序、空返回空', () => {
+  assert.equal(coarseIndustry('银行Ⅱ/银行/国有大型银行Ⅲ'), '银行');
+  assert.equal(coarseIndustry('国有大型银行Ⅲ/银行Ⅱ/银行'), '银行');
+  assert.equal(coarseIndustry('锂电池/电力设备/电池'), '电池');
+  // 并列（同长度）取字典序最小，与段顺序无关
+  assert.equal(coarseIndustry('炼油化工/炼化及贸易/石油石化'), '炼油化工');
+  assert.equal(coarseIndustry('石油石化/炼化及贸易/炼油化工'), '炼油化工');
+  assert.equal(coarseIndustry('白酒'), '白酒');
+  assert.equal(coarseIndustry('///'), '');
 });
