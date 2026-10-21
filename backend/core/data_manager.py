@@ -13,6 +13,14 @@ from .indicator_registry import INDICATOR_FUNCS
 
 logger = logging.getLogger(__name__)
 
+# 时点型（PIT）基本面字段：随周/月 bar 前向聚合（窗口内最后交易日值），
+# 使周/月周期选股可用 TOTAL_MV/PE_TTM 等日线字段。
+# 有意排除日频语义字段：PCT_CHG/TURN/IS_LIMIT_*/PREV_CLOSE（周/月语义不同，不做转发）。
+_PIT_FORWARD_FILL_COLS = [
+    "total_mv", "float_mv", "total_shares", "float_shares",
+    "pe_ttm", "pb_mrq", "forecast_yoy", "is_forecast_good", "is_forecast_bad",
+]
+
 # Columns to keep when loading kline parquets (P2-MEM: column pruning)
 # Aligned with security.py BlinkParser.fields
 KEEP_COLS = [
@@ -154,6 +162,8 @@ class DataManager:
                 if partial_daily.is_empty():
                     result = completed
                 else:
+                    # partial 段的 PIT 基本面列：窗口内最后交易日值（与 last() 语义一致）
+                    partial_pit = [c for c in _PIT_FORWARD_FILL_COLS if c in partial_daily.columns]
                     # 按 code 分组，合成单行
                     partial_agg = partial_daily.group_by("code").agg([
                         pl.col("date").max().alias("date"),
@@ -163,11 +173,12 @@ class DataManager:
                         pl.col("close").last(),
                         pl.col("volume").sum(),
                         pl.col("amount").sum(),
-                    ])
+                    ] + [pl.col(c).last() for c in partial_pit])
 
-                    # 确保列顺序一致：date, code, open, high, low, close, volume, amount
+                    # 确保列顺序一致：date, code, OHLCV/amount + PIT 基本面列
                     col_order = ["date", "code", "open", "high", "low", "close", "volume", "amount"]
                     ref_cols = [c for c in col_order if c in ref_df.columns]
+                    ref_cols += [c for c in ref_df.columns if c in _PIT_FORWARD_FILL_COLS]
                     if ref_cols:
                         completed = completed.select(ref_cols) if not completed.is_empty() else completed.select(ref_cols)[:0]
                         partial_agg = partial_agg.select(ref_cols)
@@ -544,6 +555,11 @@ class DataManager:
         if self.df_daily is None:
             return
 
+        # 时点型基本面字段：随周/月 bar 用窗口内最后一个交易日的值（last()，
+        # 与 close.last() 同语义），使周/月选股可用 TOTAL_MV/PE_TTM 等。
+        # 仅聚合日线表中实际存在的列；板块表无这些列时自然跳过。
+        pit_cols = [c for c in _PIT_FORWARD_FILL_COLS if c in self.df_daily.columns]
+
         aggs = [
             pl.col("open").first(),
             pl.col("high").max(),
@@ -551,7 +567,7 @@ class DataManager:
             pl.col("close").last(),
             pl.col("volume").sum(),
             pl.col("amount").sum()
-        ]
+        ] + [pl.col(c).last() for c in pit_cols]
 
         base = self.df_daily.sort("date")
         self.df_weekly = base.group_by_dynamic("date", every="1w", by="code").agg(aggs)
@@ -560,8 +576,9 @@ class DataManager:
         # 板块重采样
         if self.df_sector_daily is not None:
             s_base = self.df_sector_daily.sort("date")
-            self.df_sector_weekly = s_base.group_by_dynamic("date", every="1w", by="code").agg(aggs)
-            self.df_sector_monthly = s_base.group_by_dynamic("date", every="1mo", by="code").agg(aggs)
+            s_aggs = aggs[:6]  # 板块表仅 OHLCV/amount，无基本面列
+            self.df_sector_weekly = s_base.group_by_dynamic("date", every="1w", by="code").agg(s_aggs)
+            self.df_sector_monthly = s_base.group_by_dynamic("date", every="1mo", by="code").agg(s_aggs)
 
     def get_limit_flags(self, date: datetime.date, codes: list[str]) -> dict[str, dict]:
         """
