@@ -18,8 +18,7 @@ import {
   type AnalyzeResult,
   type SelectNLResult,
 } from '@/lib/selectNL';
-import { fetchNlMeta, callLlm, rateStore, NL_TEST_MODE } from '@/lib/selectNLServer';
-import { resolveLlmConfig } from '@/lib/llmConfig';
+import { fetchNlMeta, callLlmWithFailover, LlmNotConfiguredError, rateStore, NL_TEST_MODE } from '@/lib/selectNLServer';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -30,11 +29,6 @@ export async function POST(req: NextRequest) {
   const auth = await requireAuth(req);
   if (!auth.user) {
     return NextResponse.json({ error: '未登录' }, { status: auth.status });
-  }
-
-  const cfg = await resolveLlmConfig();
-  if (!cfg) {
-    return NextResponse.json({ error: 'AI 选股未配置', code: 'NOT_CONFIGURED' }, { status: 503 });
   }
 
   const key = `select-nl:${auth.user.userId}`;
@@ -82,8 +76,12 @@ export async function POST(req: NextRequest) {
     const translateOnce = async (
       sys: string,
       user: string
-    ): Promise<SelectNLResult | { kind: 'invalid'; reason: string; formula?: string; explanation?: string }> => {
-      const raw = await callLlm(cfg, sys, user);
+    ): Promise<
+      | { kind: 'ok'; result: SelectNLResult; model: string; source: string }
+      | { kind: 'invalid'; reason: string; formula?: string; explanation?: string }
+    > => {
+      const llm = await callLlmWithFailover(sys, user);
+      const raw = llm.text;
       let parsed: SelectNLResult;
       try {
         parsed = parseSelectNLText(raw);
@@ -115,7 +113,7 @@ export async function POST(req: NextRequest) {
       }
       const mismatch = findMagnitudeMismatch(analysis, parsed.formula);
       if (mismatch) return { kind: 'invalid', reason: mismatch, formula: parsed.formula, explanation: parsed.explanation };
-      return parsed;
+      return { kind: 'ok', result: parsed, model: llm.model, source: llm.source };
     };
 
     let result = await translateOnce(systemPrompt, userMsg);
@@ -141,16 +139,23 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       );
     }
-    const parsed = result as SelectNLResult;
+    const ok = result as { kind: 'ok'; result: SelectNLResult; model: string; source: string };
+    const parsed = ok.result;
 
     // 只有成功翻译才计入限流配额（策略见上方注释）
     if (!NL_TEST_MODE) recordRequest(rateStore, key, now);
 
-    return NextResponse.json({
-      success: true,
-      data: { formula: parsed.formula, timeframe: parsed.timeframe, explanation: parsed.explanation },
-    });
+    return NextResponse.json(
+      {
+        success: true,
+        data: { formula: parsed.formula, timeframe: parsed.timeframe, explanation: parsed.explanation },
+      },
+      { headers: { 'X-LLM-Model': `${ok.model}@${ok.source}` } },
+    );
   } catch (err) {
+    if (err instanceof LlmNotConfiguredError) {
+      return NextResponse.json({ error: 'AI 选股未配置', code: 'NOT_CONFIGURED' }, { status: 503 });
+    }
     console.error('select-nl failed:', err);
     return NextResponse.json(
       { error: 'AI 选股服务暂不可用，请稍后再试或改用公式', code: 'LLM_UNAVAILABLE' },

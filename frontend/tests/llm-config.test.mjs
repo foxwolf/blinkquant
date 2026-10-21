@@ -1,4 +1,4 @@
-// frontend/tests/llm-config.test.mjs
+﻿// frontend/tests/llm-config.test.mjs
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'node:crypto';
@@ -154,10 +154,12 @@ test('llmConfig 契约：库优先/env 兜底', () => {
   assert.match(src, /export function resolveEnvConfig/);
 });
 
-test('select-nl 路由契约：使用 resolveLlmConfig 且不再读 LLM_ 常量', () => {
+test('select-nl 路由契约：走 callLlmWithFailover 且区分 503/502', () => {
   for (const rel of ['../src/app/api/select-nl/route.ts', '../src/app/api/select-nl/analyze/route.ts']) {
     const src = read(rel);
-    assert.match(src, /resolveLlmConfig/);
+    assert.match(src, /callLlmWithFailover/);
+    assert.match(src, /LlmNotConfiguredError/);
+    assert.match(src, /NOT_CONFIGURED/);
     assert.doesNotMatch(src, /LLM_ENDPOINT/);
     assert.doesNotMatch(src, /LLM_API_KEY/);
   }
@@ -196,4 +198,111 @@ test('管理接口契约：test 路由用 callLlm 且短超时', () => {
   assert.match(src, /callLlm/);
   assert.match(src, /latencyMs/);
   assert.match(src, /requireAdmin/);
+});
+
+// ---- 复制 src/lib/llmConfig.ts 的 failover 纯函数 ----
+const CHAIN_STEP_BUDGET_MS = 30000;
+const TOTAL_FAILOVER_BUDGET_MS = 55000;
+const MIN_STEP_MS = 3000;
+const DEFAULT_REASONING_EFFORT = 'low';
+const DEFAULT_TEMPLATE_KWARGS = '{"enable_thinking": false}';
+
+function resolveEnvConfig(env) {
+  const { LLM_ENDPOINT, LLM_API_KEY, LLM_MODEL } = env;
+  if (!LLM_ENDPOINT || !LLM_API_KEY || !LLM_MODEL) return null;
+  return {
+    endpoint: LLM_ENDPOINT,
+    apiKey: LLM_API_KEY,
+    model: LLM_MODEL,
+    timeoutMs: clampTimeoutMs(env.LLM_TIMEOUT_MS),
+    reasoningEffort: env.LLM_REASONING_EFFORT || DEFAULT_REASONING_EFFORT,
+    maxTokens: parseMaxTokens(env.LLM_MAX_TOKENS ? Number(env.LLM_MAX_TOKENS) : undefined),
+    templateKwargs: parseTemplateKwargs(env.LLM_TEMPLATE_KWARGS || DEFAULT_TEMPLATE_KWARGS),
+    source: 'env',
+  };
+}
+
+function buildConfigChain(rows, secret, env) {
+  const chain = [];
+  const sorted = [...rows].sort((a, b) => {
+    if (a.is_active !== b.is_active) return a.is_active ? -1 : 1;
+    return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
+  });
+  for (const r of sorted) {
+    if (!secret) break;
+    try {
+      chain.push({
+        endpoint: r.endpoint,
+        apiKey: decryptApiKey(r.api_key_enc, secret),
+        model: r.model,
+        timeoutMs: clampTimeoutMs(Number(r.timeout_ms)),
+        reasoningEffort: r.reasoning_effort || DEFAULT_REASONING_EFFORT,
+        maxTokens: parseMaxTokens(Number(r.max_tokens)),
+        templateKwargs: parseTemplateKwargs(r.template_kwargs),
+        source: 'db',
+      });
+    } catch (e) {
+      console.warn('[llmConfig] 配置解密失败，跳过该配置:', e instanceof Error ? e.message : e);
+    }
+  }
+  const envCfg = resolveEnvConfig(env);
+  if (envCfg) chain.push(envCfg);
+  return chain;
+}
+
+function planFailoverTimeouts(configs, totalBudgetMs = TOTAL_FAILOVER_BUDGET_MS) {
+  const steps = [];
+  let remaining = totalBudgetMs;
+  for (const cfg of configs) {
+    const timeoutMs = Math.min(cfg.timeoutMs, CHAIN_STEP_BUDGET_MS, remaining);
+    if (timeoutMs < MIN_STEP_MS) break;
+    steps.push({ cfg, timeoutMs });
+    remaining -= timeoutMs;
+    if (remaining < MIN_STEP_MS) break;
+  }
+  return steps;
+}
+
+const SECRET = 'failover-test-secret';
+
+test('buildConfigChain：启用配置打头，其余按 updated_at 新→旧，env 兜底', () => {
+  const enc = (m) => encryptApiKey(`key-${m}`, SECRET);
+  const rows = [
+    { endpoint: 'https://b', model: 'model-b', api_key_enc: enc('b'), timeout_ms: 50000, reasoning_effort: null, max_tokens: 1024, template_kwargs: null, is_active: false, updated_at: '2026-10-01T00:00:00Z' },
+    { endpoint: 'https://a', model: 'model-a', api_key_enc: enc('a'), timeout_ms: 50000, reasoning_effort: null, max_tokens: 1024, template_kwargs: null, is_active: true, updated_at: '2026-09-01T00:00:00Z' },
+    { endpoint: 'https://c', model: 'model-c', api_key_enc: enc('c'), timeout_ms: 50000, reasoning_effort: null, max_tokens: 1024, template_kwargs: null, is_active: false, updated_at: '2026-10-10T00:00:00Z' },
+  ];
+  const chain = buildConfigChain(rows, SECRET, { LLM_ENDPOINT: 'https://env', LLM_API_KEY: 'env-key', LLM_MODEL: 'env-model' });
+  assert.deepEqual(chain.map((c) => `${c.model}@${c.source}`), ['model-a@db', 'model-c@db', 'model-b@db', 'env-model@env']);
+  assert.equal(chain[0].apiKey, 'key-a');
+});
+
+test('buildConfigChain：解密失败跳过、缺 secret 仅 env、env 缺失不追加', () => {
+  const rows = [
+    { endpoint: 'https://bad', model: 'bad', api_key_enc: 'not-a-valid-cipher', timeout_ms: 50000, reasoning_effort: null, max_tokens: 1024, template_kwargs: null, is_active: true, updated_at: '2026-10-01T00:00:00Z' },
+  ];
+  const env = { LLM_ENDPOINT: 'https://env', LLM_API_KEY: 'k', LLM_MODEL: 'env-model' };
+  assert.deepEqual(buildConfigChain(rows, SECRET, env).map((c) => c.model), ['env-model']);
+  assert.deepEqual(buildConfigChain(rows, undefined, env).map((c) => c.source), ['env']);
+  assert.deepEqual(buildConfigChain(rows, SECRET, {}), []);
+});
+
+test('planFailoverTimeouts：单模型裁到 30s，链内共享总预算，剩余不足 3s 停止', () => {
+  const mk = (timeoutMs, model) => ({ model, timeoutMs });
+  // 单配置 50s → 裁到 30s
+  assert.deepEqual(planFailoverTimeouts([mk(50000, 'a')]).map((s) => s.timeoutMs), [30000]);
+  // 两个 50s 配置：30s + 25s（剩余预算），第三个配置因剩余 < 3s 不再尝试
+  const three = planFailoverTimeouts([mk(50000, 'a'), mk(50000, 'b'), mk(50000, 'c')]);
+  assert.deepEqual(three.map((s) => `${s.cfg.model}:${s.timeoutMs}`), ['a:30000', 'b:25000']);
+  // 小配置保留自身值
+  const small = planFailoverTimeouts([mk(10000, 'a'), mk(10000, 'b'), mk(10000, 'c')]);
+  assert.deepEqual(small.map((s) => `${s.cfg.model}:${s.timeoutMs}`), ['a:10000', 'b:10000', 'c:10000']);
+});
+
+test('selectNLServer 契约：callLlmWithFailover 抛 LlmNotConfiguredError 且记录切换', () => {
+  const src = read('../src/lib/selectNLServer.ts');
+  assert.match(src, /export class LlmNotConfiguredError/);
+  assert.match(src, /export async function callLlmWithFailover/);
+  assert.match(src, /planFailoverTimeouts/);
+  assert.match(src, /llmFailover/);
 });

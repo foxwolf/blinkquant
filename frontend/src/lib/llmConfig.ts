@@ -113,3 +113,94 @@ export async function resolveLlmConfig(): Promise<ResolvedLlmConfig | null> {
   }
   return resolveEnvConfig(process.env as EnvLike);
 }
+
+// ── 故障转移（failover）链 ─────────────────────────────────────────────
+// 链 = 启用配置打头，其余配置按 updated_at 新→旧，env 兜底。
+// 单模型超时上限 CHAIN_STEP_BUDGET_MS，保证链上主+备各有完整机会；
+// 整链共享 TOTAL_FAILOVER_BUDGET_MS（Vercel 60s 硬限留余量）。
+
+export const CHAIN_STEP_BUDGET_MS = 30000;
+export const TOTAL_FAILOVER_BUDGET_MS = 55000;
+export const MIN_STEP_MS = 3000;
+
+export interface LlmConfigRow {
+  endpoint: string;
+  model: string;
+  api_key_enc: string;
+  timeout_ms: number;
+  reasoning_effort: string | null;
+  max_tokens: number;
+  template_kwargs: unknown;
+  is_active: boolean;
+  updated_at: string | Date;
+}
+
+export function buildConfigChain(
+  rows: LlmConfigRow[],
+  secret: string | undefined,
+  env: EnvLike,
+): ResolvedLlmConfig[] {
+  const chain: ResolvedLlmConfig[] = [];
+  const sorted = [...rows].sort((a, b) => {
+    if (a.is_active !== b.is_active) return a.is_active ? -1 : 1;
+    return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
+  });
+  for (const r of sorted) {
+    if (!secret) break;
+    try {
+      chain.push({
+        endpoint: r.endpoint,
+        apiKey: decryptApiKey(r.api_key_enc, secret),
+        model: r.model,
+        timeoutMs: clampTimeoutMs(Number(r.timeout_ms)),
+        reasoningEffort: r.reasoning_effort || DEFAULT_REASONING_EFFORT,
+        maxTokens: parseMaxTokens(Number(r.max_tokens)),
+        templateKwargs: parseTemplateKwargs(r.template_kwargs),
+        source: 'db',
+      });
+    } catch (e) {
+      console.warn('[llmConfig] 配置解密失败，跳过该配置:', e instanceof Error ? e.message : e);
+    }
+  }
+  const envCfg = resolveEnvConfig(env);
+  if (envCfg) chain.push(envCfg);
+  return chain;
+}
+
+export interface FailoverStep<TCfg> {
+  cfg: TCfg;
+  timeoutMs: number;
+}
+
+export function planFailoverTimeouts<TCfg extends { timeoutMs: number }>(
+  configs: TCfg[],
+  totalBudgetMs: number = TOTAL_FAILOVER_BUDGET_MS,
+): Array<FailoverStep<TCfg>> {
+  const steps: Array<FailoverStep<TCfg>> = [];
+  let remaining = totalBudgetMs;
+  for (const cfg of configs) {
+    const timeoutMs = Math.min(cfg.timeoutMs, CHAIN_STEP_BUDGET_MS, remaining);
+    if (timeoutMs < MIN_STEP_MS) break;
+    steps.push({ cfg, timeoutMs });
+    remaining -= timeoutMs;
+    if (remaining < MIN_STEP_MS) break;
+  }
+  return steps;
+}
+
+export async function resolveLlmConfigChain(): Promise<ResolvedLlmConfig[]> {
+  const secret = process.env.AUTH_SECRET;
+  try {
+    const rows = await sql`
+      SELECT endpoint, model, api_key_enc, timeout_ms, reasoning_effort, max_tokens, template_kwargs,
+             is_active, updated_at
+      FROM llm_configs
+      ORDER BY is_active DESC, updated_at DESC
+    `;
+    return buildConfigChain(rows.rows as LlmConfigRow[], secret, process.env as EnvLike);
+  } catch (e) {
+    console.warn('[llmConfig] 读取配置链失败，仅用环境变量兜底:', e);
+    const envCfg = resolveEnvConfig(process.env as EnvLike);
+    return envCfg ? [envCfg] : [];
+  }
+}

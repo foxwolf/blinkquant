@@ -7,8 +7,7 @@ import {
   parseSelectNLAnalysis,
   type AnalyzeResult,
 } from '@/lib/selectNL';
-import { fetchNlMeta, callLlm, rateStore, NL_TEST_MODE } from '@/lib/selectNLServer';
-import { resolveLlmConfig } from '@/lib/llmConfig';
+import { fetchNlMeta, callLlmWithFailover, LlmNotConfiguredError, rateStore, NL_TEST_MODE } from '@/lib/selectNLServer';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -19,11 +18,6 @@ export async function POST(req: NextRequest) {
   const auth = await requireAuth(req);
   if (!auth.user) {
     return NextResponse.json({ error: '未登录' }, { status: auth.status });
-  }
-
-  const cfg = await resolveLlmConfig();
-  if (!cfg) {
-    return NextResponse.json({ error: 'AI 选股未配置', code: 'NOT_CONFIGURED' }, { status: 503 });
   }
 
   const key = `select-nl-analyze:${auth.user.userId}`;
@@ -68,11 +62,14 @@ export async function POST(req: NextRequest) {
       parts.push('请输出你对这条需求的中文语义分析 JSON。');
     }
 
-    // 单次 LLM 调用（Hobby 60s 硬限下无重试预算）
-    const raw = await callLlm(cfg, systemPrompt, parts.join('\n'));
+    // 单次 LLM 调用（带故障转移：启用模型失败自动切换备选；Hobby 60s 硬限下链上共享 55s 预算）
+    const llm = await callLlmWithFailover(systemPrompt, parts.join('\n'));
+    if (!llm) {
+      return NextResponse.json({ error: 'AI 选股未配置', code: 'NOT_CONFIGURED' }, { status: 503 });
+    }
     let analyzed: AnalyzeResult;
     try {
-      analyzed = parseSelectNLAnalysis(raw);
+      analyzed = parseSelectNLAnalysis(llm.text);
     } catch {
       return NextResponse.json(
         { error: 'AI 语义分析输出格式异常，请重新输入或换种说法', code: 'INVALID_LLM' },
@@ -90,8 +87,14 @@ export async function POST(req: NextRequest) {
     // 只有成功分析才计入限流配额
     if (!NL_TEST_MODE) recordRequest(rateStore, key, now);
 
-    return NextResponse.json({ success: true, data: analyzed });
+    return NextResponse.json(
+      { success: true, data: analyzed },
+      { headers: { 'X-LLM-Model': `${llm.model}@${llm.source}` } },
+    );
   } catch (err) {
+    if (err instanceof LlmNotConfiguredError) {
+      return NextResponse.json({ error: 'AI 选股未配置', code: 'NOT_CONFIGURED' }, { status: 503 });
+    }
     console.error('select-nl analyze failed:', err);
     return NextResponse.json(
       { error: 'AI 选股服务暂不可用，请稍后再试或改用公式', code: 'LLM_UNAVAILABLE' },
