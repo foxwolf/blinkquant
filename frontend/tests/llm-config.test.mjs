@@ -201,7 +201,7 @@ test('管理接口契约：test 路由用 callLlm 且短超时', () => {
 });
 
 // ---- 复制 src/lib/llmConfig.ts 的 failover 纯函数 ----
-const CHAIN_STEP_BUDGET_MS = 30000;
+const CHAIN_STEP_BUDGET_MS = 40000;
 const TOTAL_FAILOVER_BUDGET_MS = 55000;
 const MIN_STEP_MS = 3000;
 const DEFAULT_REASONING_EFFORT = 'low';
@@ -287,13 +287,13 @@ test('buildConfigChain：解密失败跳过、缺 secret 仅 env、env 缺失不
   assert.deepEqual(buildConfigChain(rows, SECRET, {}), []);
 });
 
-test('planFailoverTimeouts：单模型裁到 30s，链内共享总预算，剩余不足 3s 停止', () => {
+test('planFailoverTimeouts：单模型裁到 40s，链内共享总预算，剩余不足 3s 停止', () => {
   const mk = (timeoutMs, model) => ({ model, timeoutMs });
-  // 单配置 50s → 裁到 30s
-  assert.deepEqual(planFailoverTimeouts([mk(50000, 'a')]).map((s) => s.timeoutMs), [30000]);
-  // 两个 50s 配置：30s + 25s（剩余预算），第三个配置因剩余 < 3s 不再尝试
+  // 单配置 50s → 裁到 40s
+  assert.deepEqual(planFailoverTimeouts([mk(50000, 'a')]).map((s) => s.timeoutMs), [40000]);
+  // 两个 50s 配置：40s + 15s（剩余预算），之后剩余 < 3s 不再尝试
   const three = planFailoverTimeouts([mk(50000, 'a'), mk(50000, 'b'), mk(50000, 'c')]);
-  assert.deepEqual(three.map((s) => `${s.cfg.model}:${s.timeoutMs}`), ['a:30000', 'b:25000']);
+  assert.deepEqual(three.map((s) => `${s.cfg.model}:${s.timeoutMs}`), ['a:40000', 'b:15000']);
   // 小配置保留自身值
   const small = planFailoverTimeouts([mk(10000, 'a'), mk(10000, 'b'), mk(10000, 'c')]);
   assert.deepEqual(small.map((s) => `${s.cfg.model}:${s.timeoutMs}`), ['a:10000', 'b:10000', 'c:10000']);

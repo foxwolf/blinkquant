@@ -116,10 +116,11 @@ export async function resolveLlmConfig(): Promise<ResolvedLlmConfig | null> {
 
 // ── 故障转移（failover）链 ─────────────────────────────────────────────
 // 链 = 启用配置打头，其余配置按 updated_at 新→旧，env 兜底。
-// 单模型超时上限 CHAIN_STEP_BUDGET_MS，保证链上主+备各有完整机会；
-// 整链共享 TOTAL_FAILOVER_BUDGET_MS（Vercel 60s 硬限留余量）。
+// 单模型超时上限 CHAIN_STEP_BUDGET_MS（40s）：与 55s 总预算配合，
+// 主模型 40s 失败后备选仍有 ~15s 完整机会；整链共享 TOTAL_FAILOVER_BUDGET_MS
+//（Vercel 60s 硬限留余量）。
 
-export const CHAIN_STEP_BUDGET_MS = 30000;
+export const CHAIN_STEP_BUDGET_MS = 40000;
 export const TOTAL_FAILOVER_BUDGET_MS = 55000;
 export const MIN_STEP_MS = 3000;
 
