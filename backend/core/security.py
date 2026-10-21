@@ -403,6 +403,15 @@ class BlinkParser:
         if isinstance(node, ast.Name):
             name = _require_whitelist_field(node)
             return self.fields[name]
+        # 带前缀字段（D.CLOSE / W.CLOSE / M.CLOSE）：自描述前缀公式在 series 位置
+        # 合法引用前缀字段；周期语义由 atom 的前缀上下文决定，列表达式与裸字段一致。
+        if (isinstance(node, ast.Attribute)
+                and isinstance(node.value, ast.Name)
+                and node.value.id.upper() in _TF_PREFIXES):
+            name = node.attr.upper()
+            if name not in FIELDS:
+                raise ValueError(f"Unknown field {name}")
+            return self.fields[name]
         # 无前缀函数调用
         if (isinstance(node, ast.Call) and isinstance(node.func, ast.Name)
                 and node.func.id.upper() in INDICATORS

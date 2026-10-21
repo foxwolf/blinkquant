@@ -702,6 +702,22 @@ class TestMultiTF(unittest.TestCase):
         with self.assertRaises(ValueError):
             blink_parser.parse_multi_tf("W.MA(CLOSE, 20) > 10", base_tf="D")
 
+    def test_prefixed_field_in_series_position_accepted(self):
+        # 自描述前缀公式：CROSS_UP 的 series 参数允许带前缀字段
+        plan = blink_parser.parse_multi_tf(
+            "CROSS_UP(W.CLOSE, W.MA(W.CLOSE,20))", base_tf="W")
+        self.assertEqual(plan["type"], "atom")
+        self.assertEqual(plan["tf"], "W")
+
+    def test_prefixed_field_in_cond_position_accepted(self):
+        plan = blink_parser.parse_multi_tf("W.COUNT(W.CLOSE > 10, 3) > 0", base_tf="W")
+        self.assertEqual(plan["type"], "atom")
+        self.assertEqual(plan["tf"], "W")
+
+    def test_prefixed_field_unknown_rejected(self):
+        with self.assertRaises(ValueError):
+            blink_parser.parse_multi_tf("W.CROSS_UP(W.NOPE, W.CLOSE)", base_tf="W")
+
     def test_collect_prefixes_daily(self):
         node = ast.parse("CLOSE > 10", mode="eval").body
         self.assertEqual(blink_parser._collect_prefixes(node), set())

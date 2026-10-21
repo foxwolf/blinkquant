@@ -10,6 +10,7 @@ import StockSearch from '../StockSearch';
 import { useKlineOverlay } from '@/components/kline/KlineOverlayProvider';
 import useSelection, { type SelectionStrategySnapshot } from '@/hooks/useSelection';
 import { useSession } from '@/lib/session-context';
+import { rewriteFormulaForTimeframe } from '@/lib/formulaTimeframe';
 
 export default function SelectionWorkspace() {
   const router = useRouter();
@@ -45,6 +46,13 @@ export default function SelectionWorkspace() {
     onClearSelectedStock: closeKline,
     strategySource: selectionStrategySource,
   });
+
+  // 手动切换周期时，公式同步改写为所选周期的自描述前缀形式
+  // （日 = 裸公式，周 = W.，月 = M.；跨周期/受保护原子保留，见 formulaTimeframe.ts）
+  const handleTimeframeChange = useCallback((tf: 'D' | 'W' | 'M') => {
+    setFormula(rewriteFormulaForTimeframe(formula, timeframe as 'D' | 'W' | 'M', tf));
+    setTimeframe(tf);
+  }, [formula, timeframe, setFormula, setTimeframe]);
 
   // 从策略库进入选股工作台时，读取一次待恢复的策略并清理会话标记。
   useEffect(() => {
@@ -148,7 +156,7 @@ export default function SelectionWorkspace() {
           onFormulaChange={setFormula}
           onDateChange={setSelectDate}
           onStrategyNameChange={setStrategyName}
-          onTimeframeChange={setTimeframe}
+          onTimeframeChange={handleTimeframeChange}
           onExcludeStChange={setExcludeSt}
           onExcludeSuspendedChange={setExcludeSuspended}
           onRun={() => strategyName.trim() ? handleSelect({ date: selectDate || undefined }) : undefined}
