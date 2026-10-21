@@ -72,30 +72,45 @@ async def dispatch_selection(payload: Union[dict, str], timeout: int = 60) -> di
     payload = _ensure_dict(payload)
     async def call_one(node_id: str, url: str) -> tuple[str, dict]:
         client = await get_client()
-        resp = await asyncio.wait_for(
-            client.post(
-                f"{url}/api/v1/select",
-                json=payload,
-                headers={"Content-Type": "application/json"},
-            ),
-            timeout=timeout,
-        )
-        resp.raise_for_status()
+        try:
+            resp = await asyncio.wait_for(
+                client.post(
+                    f"{url}/api/v1/select",
+                    json=payload,
+                    headers={"Content-Type": "application/json"},
+                ),
+                timeout=timeout,
+            )
+            resp.raise_for_status()
+        except Exception as e:
+            # 保留节点错误详情（如公式 Parse error），避免"All nodes failed"无从排查
+            detail = ""
+            resp = getattr(e, "response", None)
+            if resp is not None:
+                detail = resp.text[:300]
+            elif isinstance(e, asyncio.TimeoutError):
+                detail = f"timeout after {timeout}s"
+            else:
+                detail = str(e)[:300]
+            raise RuntimeError(f"{node_id}: {detail}") from e
         return node_id, resp.json()
-    
+
     tasks = [call_one(nid, ep) for nid, ep in HF_NODES.items()]
     results = await asyncio.gather(*tasks, return_exceptions=True)
-    
+
     success = {}
+    node_errors = []
     for res in results:
         if isinstance(res, Exception):
-            pass
+            node_errors.append(str(res))
         else:
             node_id, data = res
             success[node_id] = data
-    
+
     if not success:
-        raise RuntimeError("All selection nodes failed")
+        raise RuntimeError(
+            "All selection nodes failed | " + " | ".join(node_errors)
+        )
     
     # 聚合逻辑：取 3 节点结果的并集（选股分片并行，结果取并集）
     all_codes = set()
