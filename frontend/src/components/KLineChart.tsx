@@ -24,6 +24,7 @@ import {
 } from '../utils/indicators';
 
 import { formatMoney, formatVolume } from '../utils/format';
+import { matchFocusIndex, focusLogicalRange } from '../utils/klineFocus';
 // 内联 Settings 图标组件
 const SettingsIcon = ({ className }: { className?: string }) => (
   <svg
@@ -128,6 +129,7 @@ const SUB_INDICATORS = {
 interface KLineChartProps {
   data: any;
   code: string;
+  focusDate?: string;
   subChartType?: string;
   onSubChartTypeChange?: (type: string) => void;
   mainChartType?: string;
@@ -137,6 +139,7 @@ interface KLineChartProps {
 export default function KLineChart({ 
   data, 
   code, 
+  focusDate,
   subChartType = 'MACD',
   onSubChartTypeChange,
   mainChartType = 'MA',
@@ -729,7 +732,21 @@ export default function KLineChart({
       }
     });
 
-    chart.timeScale().fitContent();
+    // 初始视图：有选股信号日 → 信号日 K 线居中 + 标记；否则维持全历史 fitContent
+    if (focusDate) {
+      const times = formattedData.map((d: any) => d.time);
+      const idx = matchFocusIndex(times, focusDate);
+      if (idx >= 0) {
+        chart.timeScale().setVisibleLogicalRange(focusLogicalRange(idx));
+        candlestickSeries.setMarkers([
+          { time: formattedData[idx].time, position: 'aboveBar', shape: 'arrowDown', color: '#2563eb', text: '选股日' },
+        ]);
+      } else {
+        chart.timeScale().fitContent();
+      }
+    } else {
+      chart.timeScale().fitContent();
+    }
     chartRef.current = chart;
 
     const resizeObserver = new ResizeObserver(() => {

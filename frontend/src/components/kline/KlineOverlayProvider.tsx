@@ -6,7 +6,7 @@ import useStockResearch, { type StockListItem } from '@/hooks/useStockResearch';
 import StockResearchPanel from '@/components/select/StockResearchPanel';
 
 interface KlineOverlayValue {
-  openKline: (code: string) => void;
+  openKline: (code: string, focusDate?: string) => void;
   closeKline: () => void;
   selectedCode: string | null;
   stockList: StockListItem[];
@@ -51,7 +51,7 @@ export default function KlineOverlayProvider({ children }: { children: ReactNode
   } = useStockResearch();
 
   const pathname = usePathname();
-  const [pendingCode, setPendingCode] = useState<string | null>(null);
+  const [pendingCode, setPendingCode] = useState<{ code: string; focusDate?: string } | null>(null);
   const openPathRef = useRef<string | null>(null);
   const stockListLengthRef = useRef(stockList.length);
 
@@ -59,13 +59,13 @@ export default function KlineOverlayProvider({ children }: { children: ReactNode
     stockListLengthRef.current = stockList.length;
   }, [stockList.length]);
 
-  const openKline = useCallback((code: string) => {
+  const openKline = useCallback((code: string, focusDate?: string) => {
     openPathRef.current = pathname;
     if (stockListLengthRef.current === 0) {
-      setPendingCode(code);
+      setPendingCode({ code, focusDate });
       return;
     }
-    void viewStock(code);
+    void viewStock(code, focusDate);
   }, [viewStock, pathname]);
 
   const closeKline = useCallback(() => {
@@ -80,10 +80,10 @@ export default function KlineOverlayProvider({ children }: { children: ReactNode
   // 预热完成前的排队请求，就绪后按归属消费（归属不符=已换页，静默丢弃；单窗语义：后到覆盖先到）。
   useEffect(() => {
     if (!pendingCode || stockList.length === 0) return;
-    const code = pendingCode;
+    const pending = pendingCode;
     setPendingCode(null);
     if (openPathRef.current !== pathname) return;
-    void viewStock(code);
+    void viewStock(pending.code, pending.focusDate);
   }, [pendingCode, stockList.length, viewStock, pathname]);
 
   // 换页即关。经 ref 调用，避免 closeKline 身份变化导致 effect 反复清空刚打开的浮窗。

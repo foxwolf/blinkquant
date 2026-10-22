@@ -43,6 +43,7 @@ export interface SelectedStock {
   code: string;
   name?: string;
   data: any;
+  focusDate?: string; // 选股信号日（YYYY-MM-DD）：K 线打开后居中定位该 bar
 }
 
 interface StockResearchPanelProps {
@@ -365,6 +366,7 @@ export default function StockResearchPanel({
                   key={chartRefreshKey}
                   code={selectedStock.code}
                   data={selectedStock.data}
+                  focusDate={selectedStock.kind === 'stock' ? selectedStock.focusDate : undefined}
                   subChartType={subChartType}
                   onSubChartTypeChange={onChangeSubChartType}
                   mainChartType={mainChartType}

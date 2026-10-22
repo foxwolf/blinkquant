@@ -13,6 +13,7 @@ export interface SelectedStock {
   code: string;
   name?: string;
   data: any;
+  focusDate?: string; // 选股信号日（YYYY-MM-DD）：K 线打开后居中定位该 bar
 }
 
 export interface StockListItem {
@@ -207,7 +208,7 @@ export default function useStockResearch() {
   }, []);
 
   const viewStock = useCallback(
-    async (code: string) => {
+    async (code: string, focusDate?: string) => {
       setChartLoading(true);
 
       try {
@@ -234,6 +235,7 @@ export default function useStockResearch() {
           code,
           name: stock?.name || code,
           data: resampledData,
+          focusDate,
         });
 
         try {
