@@ -1,0 +1,55 @@
+# Daily A-share kline incremental → flywall local Postgres (NOT Neon).
+# Secrets: FLYWALL_SSH_HOST, FLYWALL_SSH_PASSWORD
+# Optional: FLYWALL_SSH_USER (default root), FLYWALL_PG_DB (blinkquant)
+name: Kline ETL → flywall PG
+
+on:
+  schedule:
+    # 16:30 CST ≈ 08:30 UTC (after A-share close)
+    - cron: "30 8 * * 1-5"
+  workflow_dispatch:
+
+jobs:
+  etl:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install deps
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq sshpass
+          pip install -q pandas pyarrow
+
+      - name: Fetch incremental kline
+        env:
+          KLINE_ETL_DIR: ${{ github.workspace }}/scripts/kline-etl
+        run: |
+          python scripts/kline-etl/fetch_incremental.py
+
+      - name: Upsert to flywall Postgres over SSH
+        env:
+          KLINE_ETL_DIR: ${{ github.workspace }}/scripts/kline-etl
+          FLYWALL_SSH_HOST: ${{ secrets.FLYWALL_SSH_HOST }}
+          FLYWALL_SSH_USER: ${{ secrets.FLYWALL_SSH_USER }}
+          FLYWALL_SSH_PASSWORD: ${{ secrets.FLYWALL_SSH_PASSWORD }}
+          FLYWALL_PG_DB: ${{ secrets.FLYWALL_PG_DB }}
+        run: |
+          test -n "$FLYWALL_SSH_HOST"
+          test -n "$FLYWALL_SSH_PASSWORD"
+          export FLYWALL_SSH_USER="${FLYWALL_SSH_USER:-root}"
+          export FLYWALL_PG_DB="${FLYWALL_PG_DB:-blinkquant}"
+          python scripts/kline-etl/upload_to_flywall.py
+
+      - name: Summarize
+        if: always()
+        env:
+          KLINE_ETL_DIR: ${{ github.workspace }}/scripts/kline-etl
+        run: |
+          ls -la "$KLINE_ETL_DIR" || true
+          test -f "$KLINE_ETL_DIR/incremental.ndjson" && wc -l "$KLINE_ETL_DIR/incremental.ndjson" || true
