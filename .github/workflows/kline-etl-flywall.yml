@@ -5,8 +5,8 @@ name: Kline ETL → flywall PG
 
 on:
   schedule:
-    # 16:30 CST ≈ 08:30 UTC (after A-share close)
-    - cron: "30 8 * * 1-5"
+    # 16:35 CST ≈ 08:35 UTC (after A-share close)
+    - cron: "35 8 * * 1-5"
   workflow_dispatch:
 
 jobs:
