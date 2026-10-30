@@ -26,6 +26,20 @@ jobs:
           sudo apt-get install -y -qq sshpass
           pip install -q pandas pyarrow
 
+      - name: Export max dates from flywall PG
+        env:
+          KLINE_ETL_DIR: ${{ github.workspace }}/scripts/kline-etl
+          FLYWALL_SSH_HOST: ${{ secrets.FLYWALL_SSH_HOST }}
+          FLYWALL_SSH_USER: ${{ secrets.FLYWALL_SSH_USER }}
+          FLYWALL_SSH_PASSWORD: ${{ secrets.FLYWALL_SSH_PASSWORD }}
+          FLYWALL_PG_DB: ${{ secrets.FLYWALL_PG_DB }}
+        run: |
+          test -n "$FLYWALL_SSH_HOST"
+          test -n "$FLYWALL_SSH_PASSWORD"
+          export FLYWALL_SSH_USER="${FLYWALL_SSH_USER:-root}"
+          export FLYWALL_PG_DB="${FLYWALL_PG_DB:-blinkquant}"
+          python scripts/kline-etl/export_pg_max.py
+
       - name: Fetch incremental kline
         env:
           KLINE_ETL_DIR: ${{ github.workspace }}/scripts/kline-etl
@@ -52,4 +66,5 @@ jobs:
           KLINE_ETL_DIR: ${{ github.workspace }}/scripts/kline-etl
         run: |
           ls -la "$KLINE_ETL_DIR" || true
+          test -f "$KLINE_ETL_DIR/pg-max-dates.json" && python -c "import json;print('pg_max_codes',len(json.load(open('$KLINE_ETL_DIR/pg-max-dates.json'))))" || true
           test -f "$KLINE_ETL_DIR/incremental.ndjson" && wc -l "$KLINE_ETL_DIR/incremental.ndjson" || true
