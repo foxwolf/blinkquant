@@ -24,7 +24,8 @@ PARQUET = OUT / "parquet"
 STATE = OUT / "incremental-state.json"
 NDJSON = OUT / "incremental.ndjson"
 CODES_FILE = OUT / "stock_codes.json"
-NEON_MAX = OUT / "neon-max-dates.json"
+NEON_MAX = OUT / "neon-max-dates.json"  # legacy fallback only
+PG_MAX = OUT / "pg-max-dates.json"  # preferred: flywall PG baseline
 UPDATED_CODES = OUT / "incremental-updated-codes.json"
 
 def _window():
@@ -229,21 +230,21 @@ def merge_parquet(code: str, new_records: list) -> int:
     return path.stat().st_size
 
 
-def process(code: str, name: str, neon_max: str | None, source_max: str) -> dict:
-    if neon_max and neon_max >= source_max:
-        return {"code": code, "status": "skip", "bars_new": 0, "neon_max": neon_max}
+def process(code: str, name: str, pg_max: str | None, source_max: str) -> dict:
+    if pg_max and pg_max >= source_max:
+        return {"code": code, "status": "skip", "bars_new": 0, "pg_max": pg_max}
     try:
         rows = fetch_rows(code)
         if not rows:
             return {"code": code, "status": "empty", "bars_new": 0}
         local_source_max = max(r[0] for r in rows if r and r[0])
-        records, daily = rows_to_records(code, name, rows, neon_max)
+        records, daily = rows_to_records(code, name, rows, pg_max)
         if not daily:
             return {
                 "code": code,
                 "status": "up_to_date",
                 "bars_new": 0,
-                "neon_max": neon_max,
+                "pg_max": pg_max,
                 "src_max": local_source_max,
             }
         byte_len = merge_parquet(code, records)
@@ -253,7 +254,7 @@ def process(code: str, name: str, neon_max: str | None, source_max: str) -> dict
             "bars_new": len(daily),
             "daily": daily,
             "byte_len": byte_len,
-            "neon_max": neon_max,
+            "pg_max": pg_max,
             "src_max": local_source_max,
         }
     except Exception as e:
@@ -263,7 +264,16 @@ def process(code: str, name: str, neon_max: str | None, source_max: str) -> dict
 def main():
     resume = "--resume" in sys.argv
     codes = json.loads(CODES_FILE.read_text())
-    neon_map = json.loads(NEON_MAX.read_text()) if NEON_MAX.exists() else {}
+    # Prefer flywall PG max map; legacy neon-max-dates.json only as fallback
+    if PG_MAX.exists():
+        max_map = json.loads(PG_MAX.read_text())
+        max_src = "pg"
+    elif NEON_MAX.exists():
+        max_map = json.loads(NEON_MAX.read_text())
+        max_src = "neon-legacy"
+    else:
+        max_map = {}
+        max_src = "none"
     st = load_state() if resume else {
         "done": {},
         "failed": {},
@@ -279,19 +289,22 @@ def main():
     log(f"source_max_date={source_max}")
 
     name_map = {i["code"]: i.get("name") or "" for i in codes}
-    # prefer codes that have neon history or parquet
-    all_codes = sorted(set(list(neon_map.keys()) + [i["code"] for i in codes if (PARQUET / f"{i['code']}.parquet").exists()]))
+    # Full universe from stock_codes.json (clean Actions runners have no parquet/neon-max)
+    all_codes = sorted({i["code"] for i in codes if i.get("code")})
     todo = []
     for code in all_codes:
         if code in st["done"] and st["done"][code].get("status") in ("ok", "skip", "up_to_date", "empty"):
             continue
-        nm = neon_map.get(code)
+        nm = max_map.get(code)
         if nm and nm >= source_max:
-            st["done"][code] = {"status": "skip", "bars_new": 0, "neon_max": nm}
+            st["done"][code] = {"status": "skip", "bars_new": 0, "pg_max": nm}
             continue
         todo.append(code)
 
-    log(f"incremental todo={len(todo)} already_done={len(st['done'])} neon_codes={len(neon_map)}")
+    log(
+        f"incremental todo={len(todo)} already_done={len(st['done'])} "
+        f"universe={len(all_codes)} max_map={len(max_map)} max_src={max_src}"
+    )
     save_state(st)
 
     ok = empty = err = skip_like = 0
@@ -300,7 +313,7 @@ def main():
     t0 = time.time()
 
     with ThreadPoolExecutor(max_workers=WORKERS) as ex, NDJSON.open("a", encoding="utf-8") as out:
-        futs = {ex.submit(process, c, name_map.get(c, ""), neon_map.get(c), source_max): c for c in todo}
+        futs = {ex.submit(process, c, name_map.get(c, ""), max_map.get(c), source_max): c for c in todo}
         for i, fut in enumerate(as_completed(futs), 1):
             res = fut.result()
             code = res["code"]
@@ -317,7 +330,7 @@ def main():
                         "status": "ok",
                         "bars_new": res["bars_new"],
                         "byte_len": res.get("byte_len"),
-                        "neon_max": res.get("neon_max"),
+                        "pg_max": res.get("pg_max"),
                         "src_max": res.get("src_max"),
                         "at": datetime.now(timezone.utc).isoformat(),
                     }
@@ -327,7 +340,7 @@ def main():
                     st["done"][code] = {
                         "status": status,
                         "bars_new": 0,
-                        "neon_max": res.get("neon_max"),
+                        "pg_max": res.get("pg_max"),
                         "src_max": res.get("src_max"),
                     }
                 elif status == "empty":
